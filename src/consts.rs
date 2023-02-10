@@ -1,0 +1,1 @@
+pub const PLACEHOLDER_VALUE_U8: u8 = 0x23;
