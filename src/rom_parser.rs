@@ -5,7 +5,7 @@ pub struct Rom {
     pub title: String,
     pub manufacturer_code: [u8; 4],
     pub cgb_flag: u8,
-    pub new_license_code: u16,
+    pub new_license_code: [u8; 2],
     pub sgb_flag: u8,
     pub cartridge_type: u8,
     rom_size: u8,
@@ -28,9 +28,9 @@ impl Rom {
             title.push(*c as char);
         }
 
-        let new_licnse_code: u16 = 
-            (*rom_content.get(0x144).expect("Invalid rom structure (first new_licnse_code)") as u16) << 8 |
-            (*rom_content.get(0x145).expect("Invalid rom structure (second new_licnse_code)") as u16);
+        let new_licnse_code: [u8; 2] = 
+            [*rom_content.get(0x144).expect("Invalid rom structure (first new_licnse_code)"),
+             *rom_content.get(0x145).expect("Invalid rom structure (second new_licnse_code)")];
 
         let global_checksum: u16 = 
             (*rom_content.get(0x14E).expect("Invalid rom structure (first global_checksum)") as u16) << 8 |
