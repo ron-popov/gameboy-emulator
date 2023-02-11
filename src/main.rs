@@ -3,6 +3,7 @@ use std::fs::File;
 
 pub mod consts;
 mod rom_parser;
+mod tests;
 
 pub use consts::*;
 use rom_parser::Rom;
@@ -15,5 +16,6 @@ fn main() {
     }).collect();
 
     let rom: Rom = Rom::create_from_bytes(rom_content);
-    println!("Loaded rom {}", rom.get_title());
+    println!("Loaded rom {} by {:?}", rom.title, rom.manufacturer_code);
+    println!("CGB Flag 0x{:2X}", rom.cgb_flag);
 }
