@@ -51,4 +51,6 @@ fn main() {
 
     let rom: Rom = Rom::create_from_bytes(rom_content);
     debug!("Loaded rom with title {}, CGB flag is 0x{:2X}", rom.title, rom.cgb_flag);
+    // trace!("Rom size is 0x{:4X}", rom.rom_size);
+    // trace!("Ram size is 0x{:4X}", rom.ram_size);
 }
