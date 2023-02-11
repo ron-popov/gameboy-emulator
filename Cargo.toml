@@ -9,3 +9,6 @@ authors = ["Ron Popov"]
 [dependencies]
 byteorder = "1.4.3"
 readonly = "0.2.3"
+clap = "4.0"
+log = "0.4.17"
+simplelog = "0.12.0"
