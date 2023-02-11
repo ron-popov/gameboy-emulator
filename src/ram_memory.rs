@@ -8,13 +8,10 @@ pub struct RamMemory {
 impl RamMemory {
     pub fn init_from_rom(rom: &Rom) -> RamMemory {
         let mut memory: Vec<u8> = Vec::new();
-        for _ in 0..0x100 {
-            memory.push(0x00);
-        }
 
         for b in &rom.data {
             memory.push(*b);
-        }       
+        }
 
         while memory.len() < RAM_SIZE {
             memory.push(0x00);

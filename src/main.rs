@@ -6,11 +6,12 @@ use std::fs::File;
 use simplelog::*;
 use clap::{Command, Arg, ArgAction};
 
-mod consts;
 mod ram_memory;
 mod rom_parser;
+mod consts;
 mod tests;
 mod cpu;
+mod opcodes;
 
 // use consts::*;
 use rom_parser::Rom;
@@ -54,7 +55,8 @@ fn main() {
     }).collect();
 
     let rom: Rom = Rom::create_from_bytes(rom_content);
-    debug!("Loaded rom with title {}, CGB flag is 0x{:02X}", rom.title, rom.cgb_flag);
+    debug!("Loaded rom with title {}", rom.title);
+    debug!("Loaded rom with cgb flag 0x{:02X}", rom.cgb_flag);
 
     let mut ram_memory = RamMemory::init_from_rom(&rom);
     let cpu: CPU = CPU::init_from_rom(&rom, &mut ram_memory);

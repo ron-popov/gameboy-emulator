@@ -1,5 +1,6 @@
 // General
 pub const PLACEHOLDER_VALUE_U8: u8 = 0x23;
+pub const OPCODES_JSON_PATH: &str = "src/opcodes.json";
 
 // External ram size
 pub const CARTRIDGE_RAM_SIZE_NONE: u8 = 0x00;
