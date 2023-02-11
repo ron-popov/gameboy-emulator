@@ -36,9 +36,22 @@ impl Rom {
             (*rom_content.get(0x14E).expect("Invalid rom structure (first global_checksum)") as u16) << 8 |
             (*rom_content.get(0x14F).expect("Invalid rom structure (second global_checksum)") as u16);
 
+        // Validate cartridge type
         let cartridge_type: u8 = *rom_content.get(0x147).expect("Invalid rom structure (cartridge_type)");
         if cartridge_type != CARTRIDGE_TYPE_ROM_ONLY {
-            panic!("Unsupported cartridge type (0x{:2X})", cartridge_type);
+            panic!("Unsupported cartridge type (0x{:02X})", cartridge_type);
+        }
+
+        // Validate rom size
+        let rom_size: u8 = *rom_content.get(0x148).expect("Invalid rom structure (rom_size)");
+        if rom_size != CARTRIDGE_ROM_SIZE_NO_BANKS {
+            panic!("Unsupported rom size (0x{:02X})", rom_size);
+        }
+
+        // Validate rom size
+        let ram_size: u8 = *rom_content.get(0x149).expect("Invalid rom structure (ram_size)");
+        if ram_size != CARTRIDGE_RAM_SIZE_NONE {
+            panic!("Unsupported ram size (0x{:02X})", ram_size);
         }
 
         Rom {
@@ -48,8 +61,8 @@ impl Rom {
             new_license_code: new_licnse_code,
             sgb_flag: *rom_content.get(0x146).expect("Invalid rom structure (sgb_flag)"),
             cartridge_type: cartridge_type,
-            rom_size: *rom_content.get(0x148).expect("Invalid rom structure (rom_size)"),
-            ram_size: *rom_content.get(0x149).expect("Invalid rom structure (ram_size)"),
+            rom_size: rom_size,
+            ram_size: ram_size,
             destination_code: *rom_content.get(0x14A).expect("Invalid rom structure (destination_code)"),
             old_license_code: *rom_content.get(0x14B).expect("Invalid rom structure (old_license_code)"),
             mask_rom_version_number: *rom_content.get(0x14C).expect("Invalid rom structure (mask_rom_version_number)"),
