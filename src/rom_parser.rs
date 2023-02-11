@@ -58,9 +58,5 @@ impl Rom {
             data: rom_content.clone()
         }
     }
-    
-    pub fn get_rom_size_bytes(&self) -> usize {
-        PLACEHOLDER_VALUE_U8 as usize
-    }
 
 }
