@@ -44,7 +44,24 @@ impl<'cpu_impl> CPU<'_> {
     }
 
     pub fn execute_instruction(&mut self) {
+        let mut opcode = self.get_addr(self.pc_reg);
+        let mut opcode_data: Value = Value::Null;
 
+        
+        if opcode == 0xCB {
+            opcode = self.get_addr(self.pc_reg + 1);
+
+            trace!("Executing instruction 0x{:02X} with 0xCB prefix", opcode);
+            opcode_data = self.opcodes["cbprefixed"][format!("0x{:02X}", opcode)].clone();
+        } else {
+
+            trace!("Executing instruction 0x{:02X}", opcode);
+            opcode_data = self.opcodes["unprefixed"][format!("0x{:02X}", opcode)].clone();
+        }
+
+        assert_ne!(opcode_data, Value::Null);
+        trace!("{}", opcode_data);
+        panic!("bla");
     }
 
     fn get_addr(&self, addr: u16) -> u8 {

@@ -55,9 +55,12 @@ fn main() {
     }).collect();
 
     let rom: Rom = Rom::create_from_bytes(rom_content);
-    debug!("Loaded rom with title {}", rom.title);
-    debug!("Loaded rom with cgb flag 0x{:02X}", rom.cgb_flag);
+    info!("Loading rom \"{}\"", rom.title);
 
     let mut ram_memory = RamMemory::init_from_rom(&rom);
-    let cpu: CPU = CPU::init_from_rom(&rom, &mut ram_memory);
+    let mut cpu: CPU = CPU::init_from_rom(&rom, &mut ram_memory);
+
+    loop {
+        cpu.execute_instruction();
+    }
 }
