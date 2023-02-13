@@ -2,6 +2,7 @@ use crate::consts::*;
 use crate::ram_memory::RamMemory;
 use crate::rom_parser::Rom;
 use crate::opcodes::OPCODES_JSON;
+use crate::param::{Param, ParamType, ParamValue};
 
 use serde_json::{Result, Value};
 
@@ -54,14 +55,44 @@ impl<'cpu_impl> CPU<'_> {
             trace!("Executing instruction 0x{:02X} with 0xCB prefix", opcode);
             opcode_data = self.opcodes["cbprefixed"][format!("0x{:02X}", opcode)].clone();
         } else {
-
             trace!("Executing instruction 0x{:02X}", opcode);
             opcode_data = self.opcodes["unprefixed"][format!("0x{:02X}", opcode)].clone();
         }
 
-        assert_ne!(opcode_data, Value::Null);
         trace!("{}", opcode_data);
-        panic!("bla");
+
+        if opcode_data == Value::Null {
+            panic!("Opcode data for instruction 0x{:02X} is null", opcode);
+        }
+
+        if opcode_data["mnemonic"] == Value::Null {
+            panic!("Opcode 0x{:02X} doesn't have a name", opcode);
+        } else if !opcode_data["mnemonic"].is_string() {
+            panic!("Opcode 0x{:02X} name is not a string (WTF)", opcode);
+        }
+        
+        let opcode_name: &str = opcode_data["mnemonic"].as_str().unwrap();
+        let params: Vec<Param> = self.get_params(&opcode_data);
+
+        match opcode_name {
+            "NOP" => {
+                // Nothing to do
+            },
+            "DI" => {
+                //TODO: Disable instrupts
+            },
+            "JP" => {
+                if params.len() == 1 {
+
+                }
+            }
+            _ => {
+                panic!("Unknown opcode name ({})", opcode_data["mnemonic"]);
+            }
+        }
+
+        self.pc_reg += opcode_data["bytes"].as_u64().unwrap() as u16;
+
     }
 
     fn get_addr(&self, addr: u16) -> u8 {
@@ -70,5 +101,35 @@ impl<'cpu_impl> CPU<'_> {
 
     fn set_addr(&mut self, addr: u16, value: u8) {
         self.ram_memory.set_addr(addr, value);
+    }
+
+    fn get_params(&self, opcode_data: &Value) -> Vec<Param> {
+        if !opcode_data["operands"].is_array() {
+            panic!("Operands value is not array");
+        }
+
+        let mut return_value = Vec::<Param>::new();
+
+        for operand in opcode_data["operands"].as_array().unwrap() {
+            let is_immediate: bool = operand["immediate"] != Value::Null && operand["immediate"].as_bool().unwrap();
+            let mut bytes_count: usize = 0;
+            if operand["bytes"] != Value::Null {
+                if !operand["bytes"].is_u64() {
+                    panic!("Invalid operand bytes type");
+                }
+
+                bytes_count = operand["bytes"].as_u64().unwrap() as usize;
+            }
+            
+            return_value.push(
+                Param::new(operand["name"].as_str().unwrap().to_string(), is_immediate, bytes_count)
+            );
+        }
+
+        return_value
+    }
+
+    fn is_bool_param_true(&self, param: Param) {
+
     }
 }

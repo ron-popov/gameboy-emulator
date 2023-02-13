@@ -9,6 +9,7 @@ use clap::{Command, Arg, ArgAction};
 mod ram_memory;
 mod rom_parser;
 mod consts;
+mod param;
 mod tests;
 mod cpu;
 mod opcodes;
