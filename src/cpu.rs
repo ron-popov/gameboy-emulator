@@ -81,7 +81,7 @@ impl<'cpu_impl> CPU<'_> {
 
         match opcode_name {
             "NOP" => {
-                // Nothing to do
+                // Nothing to do \:
             },
             "DI" => {
                 info!("TODO: Disable instrupts");
