@@ -2,7 +2,7 @@ use crate::consts::*;
 use crate::ram_memory::RamMemory;
 use crate::rom_parser::Rom;
 use crate::opcodes::OPCODES_JSON;
-use crate::param::{Param, ParamType, ParamValue};
+use crate::param::{Param, ParamValue};
 
 use serde_json::{Result, Value};
 
@@ -46,9 +46,12 @@ impl<'cpu_impl> CPU<'_> {
 
     pub fn execute_instruction(&mut self) {
         let mut opcode = self.get_addr(self.pc_reg);
-        let mut opcode_data: Value = Value::Null;
-
+        let opcode_data: Value;
+        let mut should_inc_pc = true;
         
+
+        trace!("Executing instruction from addr {:04X}", self.pc_reg);
+
         if opcode == 0xCB {
             opcode = self.get_addr(self.pc_reg + 1);
 
@@ -74,16 +77,22 @@ impl<'cpu_impl> CPU<'_> {
         let opcode_name: &str = opcode_data["mnemonic"].as_str().unwrap();
         let params: Vec<Param> = self.get_params(&opcode_data);
 
+        trace!("Params for this opcode are {:?}", params);
+
         match opcode_name {
             "NOP" => {
                 // Nothing to do
             },
             "DI" => {
-                //TODO: Disable instrupts
+                info!("TODO: Disable instrupts");
             },
             "JP" => {
                 if params.len() == 1 {
-
+                    let target_addr: u16 = params.get(0).unwrap().get_double();
+                    trace!("Jumping to addr 0x{:04X}", target_addr);
+                    
+                    should_inc_pc = false;
+                    self.pc_reg = target_addr;
                 }
             }
             _ => {
@@ -91,7 +100,9 @@ impl<'cpu_impl> CPU<'_> {
             }
         }
 
-        self.pc_reg += opcode_data["bytes"].as_u64().unwrap() as u16;
+        if should_inc_pc {
+            self.pc_reg += opcode_data["bytes"].as_u64().unwrap() as u16;
+        }
 
     }
 
@@ -121,8 +132,26 @@ impl<'cpu_impl> CPU<'_> {
                 bytes_count = operand["bytes"].as_u64().unwrap() as usize;
             }
             
+            let mut param = Param::new(operand["name"].as_str().unwrap().to_string(), is_immediate, bytes_count);
+            
+            let value: ParamValue = match param.get_name().as_str() {
+                "a16" => {
+                    let mut value: u16= self.get_addr(self.pc_reg + 1) as u16;
+                    value += (self.get_addr(self.pc_reg + 2) as u16) << 8;
+                    ParamValue::Double(value)
+                },
+                "d16" => {
+                    let mut value: u16= self.get_addr(self.pc_reg + 1) as u16;
+                    value += (self.get_addr(self.pc_reg + 2) as u16) << 8;
+                    ParamValue::Double(value)
+                },
+                _ => panic!("Unknown parameter type")
+            };
+
+            param.set_param_value(value);
+
             return_value.push(
-                Param::new(operand["name"].as_str().unwrap().to_string(), is_immediate, bytes_count)
+                param
             );
         }
 
