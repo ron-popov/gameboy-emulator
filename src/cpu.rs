@@ -49,16 +49,13 @@ impl<'cpu_impl> CPU<'_> {
         let opcode_data: Value;
         let mut should_inc_pc = true;
         
-
-        trace!("Executing instruction from addr {:04X}", self.pc_reg);
-
         if opcode == 0xCB {
             opcode = self.get_addr(self.pc_reg + 1);
 
-            trace!("Executing instruction 0x{:02X} with 0xCB prefix", opcode);
+            debug!("Executing instruction 0x{:02X} from addr {:04X} with 0xCB prefix", opcode, self.pc_reg);
             opcode_data = self.opcodes["cbprefixed"][format!("0x{:02X}", opcode)].clone();
         } else {
-            trace!("Executing instruction 0x{:02X}", opcode);
+            debug!("Executing instruction 0x{:02X} from addr {:04X}", opcode, self.pc_reg);
             opcode_data = self.opcodes["unprefixed"][format!("0x{:02X}", opcode)].clone();
         }
 
