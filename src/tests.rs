@@ -34,7 +34,7 @@ mod rom_parser_tests {
 
 #[cfg(test)]
 mod cpu_tests {
-    use crate::cpu::CPU;
+    use crate::cpu::{CPU, opcodes};
     use crate::rom_parser::Rom;
     use crate::ram_memory::RamMemory;
 
@@ -70,6 +70,6 @@ mod cpu_tests {
 
         let cpu: CPU = CPU::init_from_rom(&rom, &mut ram);
 
-        assert_eq!(cpu.opcodes["unprefixed"]["0x00"]["mnemonic"], "NOP");
+        assert_eq!(opcodes["unprefixed"]["0x00"]["mnemonic"], "NOP");
     }
 }

@@ -2,9 +2,11 @@ use crate::consts::*;
 use crate::ram_memory::RamMemory;
 use crate::rom_parser::Rom;
 use crate::opcodes::OPCODES_JSON;
-use crate::param::{Param, ParamValue};
+use crate::param::{Param, MemValue};
 
 use serde_json::{Result, Value};
+
+pub static opcodes: Value = serde_json::from_str(OPCODES_JSON).expect("Failed parsing opcodes json data");
 
 #[readonly::make]
 pub struct CPU<'cpu> {
@@ -19,14 +21,11 @@ pub struct CPU<'cpu> {
     h_reg: u8,
     l_reg: u8,
     sp_reg: u16,
-    pc_reg: u16,
-    pub opcodes: Value
+    pc_reg: u16
 }
 
 impl<'cpu_impl> CPU<'_> {
     pub fn init_from_rom(rom: &'cpu_impl Rom, ram_memory: &'cpu_impl mut RamMemory) -> CPU<'cpu_impl> {
-        let opcodes: Value = serde_json::from_str(OPCODES_JSON).expect("Failed parsing opcodes json data");
-
         CPU {
             ram_memory: ram_memory,
             rom: rom,
@@ -39,8 +38,26 @@ impl<'cpu_impl> CPU<'_> {
             h_reg: 0,
             l_reg: 0,
             pc_reg: 0x0100,
-            sp_reg: 0xFFFE,
-            opcodes: opcodes
+            sp_reg: 0xFFFE
+        }
+    }
+
+    pub fn init_test_cpu() -> CPU<'cpu_impl> {
+        let test_rom = Rom::create_test_rom();
+
+        CPU {
+            ram_memory: &mut RamMemory::init_from_rom(&test_rom),
+            rom: &test_rom,
+            a_reg: 0,
+            b_reg: 0,
+            c_reg: 0,
+            d_reg: 0,
+            e_reg: 0,
+            f_reg: 0,
+            h_reg: 0,
+            l_reg: 0,
+            pc_reg: 0x0100,
+            sp_reg: 0xFFFE
         }
     }
 
@@ -48,15 +65,19 @@ impl<'cpu_impl> CPU<'_> {
         let mut opcode = self.get_addr(self.pc_reg);
         let opcode_data: Value;
         let mut should_inc_pc = true;
+        let mut set_zero_flag: MemValue = MemValue::Null;
+        let mut set_carry_flag: MemValue = MemValue::Null;
+        let mut set_sub_flag: MemValue = MemValue::Null;
+        let mut set_half_carry_flag: MemValue = MemValue::Null;
         
         if opcode == 0xCB {
             opcode = self.get_addr(self.pc_reg + 1);
 
             debug!("Executing instruction 0x{:02X} from addr {:04X} with 0xCB prefix", opcode, self.pc_reg);
-            opcode_data = self.opcodes["cbprefixed"][format!("0x{:02X}", opcode)].clone();
+            opcode_data = opcodes["cbprefixed"][format!("0x{:02X}", opcode)].clone();
         } else {
             debug!("Executing instruction 0x{:02X} from addr {:04X}", opcode, self.pc_reg);
-            opcode_data = self.opcodes["unprefixed"][format!("0x{:02X}", opcode)].clone();
+            opcode_data = opcodes["unprefixed"][format!("0x{:02X}", opcode)].clone();
         }
 
         trace!("{}", opcode_data);
@@ -90,10 +111,39 @@ impl<'cpu_impl> CPU<'_> {
                     
                     should_inc_pc = false;
                     self.pc_reg = target_addr;
+                } else {
+                    unimplemented!("Complicated jump instructions")
                 }
+            },
+            "CP" => {
+                if params.len() != 1 {
+                    panic!("Invalid params count for CP instruction ({})", params.len());
+                }
+
+                set_sub_flag = MemValue::Bool(true);
+
+                let param = params.get(0).unwrap().get_byte();
+                let result = match self.a_reg.checked_sub(param) {
+                    Some(sub_result) => {
+                        // Valid sub result
+                        set_carry_flag = MemValue::Bool(false);
+                        
+                        if sub_result == 0 {
+                            set_zero_flag = MemValue::Bool(true);
+                        } else {
+                            set_zero_flag = MemValue::Bool(false);
+                        }
+                    }, 
+                    None => {
+                        //Underflow happened
+                        set_carry_flag = MemValue::Bool(true);
+                    }
+                };
+
+                set_half_carry_flag = MemValue::Bool((((self.a_reg & 0xf) - (param & 0xf)) & 0x10) != 0);
             }
             _ => {
-                panic!("Unknown opcode name ({})", opcode_data["mnemonic"]);
+                unimplemented!("Opcode name ({})", opcode_data["mnemonic"]);
             }
         }
 
@@ -101,8 +151,16 @@ impl<'cpu_impl> CPU<'_> {
             self.pc_reg += opcode_data["bytes"].as_u64().unwrap() as u16;
         }
 
+        match set_sub_flag {
+            MemValue::Bool(value) => {
+                
+            },
+            _ => ()
+        }
+
     }
 
+    // Memory stuff
     fn get_addr(&self, addr: u16) -> u8 {
         self.ram_memory.get_addr(addr)
     }
@@ -111,6 +169,7 @@ impl<'cpu_impl> CPU<'_> {
         self.ram_memory.set_addr(addr, value);
     }
 
+    // Params stuff
     fn get_params(&self, opcode_data: &Value) -> Vec<Param> {
         if !opcode_data["operands"].is_array() {
             panic!("Operands value is not array");
@@ -131,18 +190,21 @@ impl<'cpu_impl> CPU<'_> {
             
             let mut param = Param::new(operand["name"].as_str().unwrap().to_string(), is_immediate, bytes_count);
             
-            let value: ParamValue = match param.get_name().as_str() {
+            let value: MemValue = match param.get_name().as_str() {
                 "a16" => {
                     let mut value: u16= self.get_addr(self.pc_reg + 1) as u16;
                     value += (self.get_addr(self.pc_reg + 2) as u16) << 8;
-                    ParamValue::Double(value)
+                    MemValue::Double(value)
                 },
                 "d16" => {
                     let mut value: u16= self.get_addr(self.pc_reg + 1) as u16;
                     value += (self.get_addr(self.pc_reg + 2) as u16) << 8;
-                    ParamValue::Double(value)
+                    MemValue::Double(value)
                 },
-                _ => panic!("Unknown parameter type")
+                "d8" => {
+                    MemValue::Byte(self.get_addr(self.pc_reg + 1))
+                }
+                _ => unimplemented!("Parameter type ({})", param.get_name())
             };
 
             param.set_param_value(value);
@@ -155,7 +217,8 @@ impl<'cpu_impl> CPU<'_> {
         return_value
     }
 
-    fn is_bool_param_true(&self, param: Param) {
+    // Flags stuff
+    fn set_sub_flag(&mut self, value: bool) {
 
     }
 }
