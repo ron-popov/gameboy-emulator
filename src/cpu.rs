@@ -4,9 +4,11 @@ use crate::rom_parser::Rom;
 use crate::opcodes::OPCODES_JSON;
 use crate::param::{Param, MemValue};
 
-use serde_json::{Result, Value};
+use serde_json::Value;
 
-pub static opcodes: Value = serde_json::from_str(OPCODES_JSON).expect("Failed parsing opcodes json data");
+pub fn get_opcodes() -> Value {
+    serde_json::from_str(OPCODES_JSON).expect("Failed parsing opcodes json data")
+}
 
 #[readonly::make]
 pub struct CPU<'cpu> {
@@ -21,11 +23,14 @@ pub struct CPU<'cpu> {
     h_reg: u8,
     l_reg: u8,
     sp_reg: u16,
-    pc_reg: u16
+    pc_reg: u16,
+    opcodes: Value
 }
 
 impl<'cpu_impl> CPU<'_> {
     pub fn init_from_rom(rom: &'cpu_impl Rom, ram_memory: &'cpu_impl mut RamMemory) -> CPU<'cpu_impl> {
+        let opcodes = get_opcodes();
+
         CPU {
             ram_memory: ram_memory,
             rom: rom,
@@ -38,26 +43,8 @@ impl<'cpu_impl> CPU<'_> {
             h_reg: 0,
             l_reg: 0,
             pc_reg: 0x0100,
-            sp_reg: 0xFFFE
-        }
-    }
-
-    pub fn init_test_cpu() -> CPU<'cpu_impl> {
-        let test_rom = Rom::create_test_rom();
-
-        CPU {
-            ram_memory: &mut RamMemory::init_from_rom(&test_rom),
-            rom: &test_rom,
-            a_reg: 0,
-            b_reg: 0,
-            c_reg: 0,
-            d_reg: 0,
-            e_reg: 0,
-            f_reg: 0,
-            h_reg: 0,
-            l_reg: 0,
-            pc_reg: 0x0100,
-            sp_reg: 0xFFFE
+            sp_reg: 0xFFFE,
+            opcodes: opcodes
         }
     }
 
@@ -74,10 +61,10 @@ impl<'cpu_impl> CPU<'_> {
             opcode = self.get_addr(self.pc_reg + 1);
 
             debug!("Executing instruction 0x{:02X} from addr {:04X} with 0xCB prefix", opcode, self.pc_reg);
-            opcode_data = opcodes["cbprefixed"][format!("0x{:02X}", opcode)].clone();
+            opcode_data = self.opcodes["cbprefixed"][format!("0x{:02X}", opcode)].clone();
         } else {
             debug!("Executing instruction 0x{:02X} from addr {:04X}", opcode, self.pc_reg);
-            opcode_data = opcodes["unprefixed"][format!("0x{:02X}", opcode)].clone();
+            opcode_data = self.opcodes["unprefixed"][format!("0x{:02X}", opcode)].clone();
         }
 
         trace!("{}", opcode_data);
@@ -123,7 +110,7 @@ impl<'cpu_impl> CPU<'_> {
                 set_sub_flag = MemValue::Bool(true);
 
                 let param = params.get(0).unwrap().get_byte();
-                let result = match self.a_reg.checked_sub(param) {
+                match self.a_reg.checked_sub(param) {
                     Some(sub_result) => {
                         // Valid sub result
                         set_carry_flag = MemValue::Bool(false);
@@ -138,9 +125,9 @@ impl<'cpu_impl> CPU<'_> {
                         //Underflow happened
                         set_carry_flag = MemValue::Bool(true);
                     }
-                };
+                }
 
-                set_half_carry_flag = MemValue::Bool((((self.a_reg & 0xf) - (param & 0xf)) & 0x10) != 0);
+                set_half_carry_flag = MemValue::Bool((((self.a_reg & 0xf).wrapping_sub(param & 0xf)) & 0x10) != 0);
             }
             _ => {
                 unimplemented!("Opcode name ({})", opcode_data["mnemonic"]);
@@ -151,9 +138,30 @@ impl<'cpu_impl> CPU<'_> {
             self.pc_reg += opcode_data["bytes"].as_u64().unwrap() as u16;
         }
 
+        match set_zero_flag {
+            MemValue::Bool(value) => {
+                self.set_zero_flag(value);
+            },
+            _ => ()
+        }
+
         match set_sub_flag {
             MemValue::Bool(value) => {
-                
+                self.set_sub_flag(value);
+            },
+            _ => ()
+        }
+
+        match set_half_carry_flag {
+            MemValue::Bool(value) => {
+                self.set_half_carry_flag(value);
+            },
+            _ => ()
+        }
+
+        match set_carry_flag {
+            MemValue::Bool(value) => {
+                self.set_carry_flag(value);
             },
             _ => ()
         }
@@ -167,6 +175,10 @@ impl<'cpu_impl> CPU<'_> {
 
     fn set_addr(&mut self, addr: u16, value: u8) {
         self.ram_memory.set_addr(addr, value);
+    }
+
+    pub fn get_program_counter(&self) -> u16 {
+        self.pc_reg
     }
 
     // Params stuff
@@ -213,12 +225,53 @@ impl<'cpu_impl> CPU<'_> {
                 param
             );
         }
-
+        
         return_value
     }
 
     // Flags stuff
-    fn set_sub_flag(&mut self, value: bool) {
-
+    fn set_flag(&mut self, value: bool, mask: u8) {
+        if value {
+            self.f_reg = self.f_reg | mask
+        } else {
+            self.f_reg = self.f_reg & (mask ^ 0b11111111)
+        }
     }
+
+    fn get_flag(&self, mask: u8) -> bool {
+        self.f_reg & mask != 0
+    }
+
+    fn set_zero_flag(&mut self, value: bool) {
+        self.set_flag(value, FLAG_ZERO_MASK)
+    }
+
+    pub fn get_zero_flag(&self) -> bool {
+        self.get_flag(FLAG_ZERO_MASK)
+    }
+
+    fn set_sub_flag(&mut self, value: bool) {
+        self.set_flag(value, FLAG_SUB_MASK)
+    }
+
+    pub fn get_sub_flag(&self) -> bool {
+        self.get_flag(FLAG_SUB_MASK)
+    }
+
+    fn set_half_carry_flag(&mut self, value: bool) {
+        self.set_flag(value, FLAG_HALF_CARRY_MASK)
+    }
+
+    pub fn get_half_carry_flag(&self) -> bool {
+        self.get_flag(FLAG_HALF_CARRY_MASK)
+    }
+
+    fn set_carry_flag(&mut self, value: bool) {
+        self.set_flag(value, FLAG_CARRY_MASK)
+    }
+
+    pub fn get_carry_flag(&self) -> bool {
+        self.get_flag(FLAG_CARRY_MASK)
+    }
+
 }

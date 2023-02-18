@@ -2,6 +2,12 @@
 pub const PLACEHOLDER_VALUE_U8: u8 = 0x23;
 pub const OPCODES_JSON_PATH: &str = "src/opcodes.json";
 
+// Flag masks
+pub const FLAG_ZERO_MASK: u8 = 0b10000000;
+pub const FLAG_SUB_MASK: u8 = 0b01000000;
+pub const FLAG_HALF_CARRY_MASK: u8 = 0b00100000;
+pub const FLAG_CARRY_MASK: u8 = 0b00010000;
+
 // External ram size
 pub const CARTRIDGE_RAM_SIZE_NONE: u8 = 0x00;
 pub const CARTRIDGE_RAM_SIZE_2KB: u8 = 0x01;
