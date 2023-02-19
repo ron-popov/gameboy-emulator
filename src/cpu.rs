@@ -85,13 +85,13 @@ impl<'cpu_impl> CPU<'_> {
         trace!("Params for this opcode are {:?}", params);
 
         match opcode_name {
-            "NOP" => {
+            "NOP" => { // NOTHING
                 // Nothing to do \:
             },
-            "DI" => {
+            "DI" => { // DISABLE INTERRUPTS
                 info!("TODO: Disable instrupts");
             },
-            "JP" => {
+            "JP" => { // JUMP
                 if params.len() == 1 {
                     let target_addr: u16 = params.get(0).unwrap().get_double();
                     trace!("Jumping to addr 0x{:04X}", target_addr);
@@ -99,12 +99,12 @@ impl<'cpu_impl> CPU<'_> {
                     should_inc_pc = false;
                     self.pc_reg = target_addr;
                 } else {
-                    unimplemented!("Complicated jump instructions")
+                    panic!("Invalid param count for JP")
                 }
             },
-            "CP" => {
+            "CP" => { // COMPARE
                 if params.len() != 1 {
-                    panic!("Invalid params count for CP instruction ({})", params.len());
+                    panic!("Invalid params count for CP");
                 }
 
                 set_sub_flag = MemValue::Bool(true);
@@ -128,7 +128,27 @@ impl<'cpu_impl> CPU<'_> {
                 }
 
                 set_half_carry_flag = MemValue::Bool((((self.a_reg & 0xf).wrapping_sub(param & 0xf)) & 0x10) != 0);
-            }
+            },
+            "JR" => { // RELATIVE JUMP, SOMETIMES CONDITIONAL
+                if params.len() == 1 {
+                    let jump_addr_param = params.get(0).unwrap();
+                    self.pc_reg = self.pc_reg.wrapping_add_signed(jump_addr_param.get_signed_byte() as i16);
+                    should_inc_pc = false;
+                } else if params.len() == 2 {
+                    let condition_param = params.get(0).unwrap();
+
+                    if condition_param.get_bool() {
+                        let jump_addr_param = params.get(1).unwrap();
+                        self.pc_reg = self.pc_reg.wrapping_add_signed(jump_addr_param.get_signed_byte() as i16);
+                        should_inc_pc = false;
+                    }
+
+                } else {
+                    panic!("Invalid param count for JR")
+                }
+            },
+            // "LD" => { // LOAD
+            // }
             _ => {
                 unimplemented!("Opcode name ({})", opcode_data["mnemonic"]);
             }
@@ -215,7 +235,13 @@ impl<'cpu_impl> CPU<'_> {
                 },
                 "d8" => {
                     MemValue::Byte(self.get_addr(self.pc_reg + 1))
-                }
+                },
+                "NZ" => {
+                    MemValue::Bool(!self.get_zero_flag())
+                },
+                "r8" => {
+                    MemValue::SignedByte(self.get_addr(self.pc_reg + 1) as i8)
+                },
                 _ => unimplemented!("Parameter type ({})", param.get_name())
             };
 
