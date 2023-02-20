@@ -147,11 +147,50 @@ impl<'cpu_impl> CPU<'_> {
                     panic!("Invalid param count for JR")
                 }
             },
-            // "LD" => { // LOAD
-            // }
+            "LD" => { // LOAD
+                match params.len() {
+                    2 => {
+                        let target_param = params.get(0).unwrap();
+                        let read_param = params.get(1).unwrap();
+    
+                        let mut write_value: MemValue = MemValue::Null;
+
+                        match read_param.get_value() {
+                            MemValue::Register(register_name) => {
+                                if read_param.is_immediate() {
+                                    unimplemented!("Loading from immediate value");
+                                } else {
+                                    match register_name.len() {
+                                        1 => {
+                                            write_value = MemValue::Byte(self.get_register(register_name));
+                                        },
+                                        2 => {
+                                            let mut chars = register_name.chars();
+                                            let target_addr = (self.get_register(chars.next().unwrap().to_string()) as u16) << 8 + 
+                                                self.get_register(chars.next().unwrap().to_string()) as u16;
+                                            write_value = MemValue::Byte(self.get_addr(target_addr));
+                                            
+                                        }, 
+                                        _ => panic!("Invalid register name length")
+                                    }
+                                }
+                            },
+                            _ => panic!("Tried running LD from unknown param type ({:?})", read_param)
+                        }
+                    },
+                    _ => {
+                        unimplemented!("Load with {} params", params.len())
+                    }
+                }
+            }
             _ => {
                 unimplemented!("Opcode name ({})", opcode_data["mnemonic"]);
             }
+
+        }
+        
+        if opcode == 0x3E {
+            panic!("blaaaa");
         }
 
         if should_inc_pc {
@@ -193,6 +232,24 @@ impl<'cpu_impl> CPU<'_> {
         self.ram_memory.get_addr(addr)
     }
 
+    pub fn get_register(&self, reg: String) -> u8 {
+        match reg.to_lowercase().as_str() {
+            "a" => self.a_reg,
+            "b" => self.b_reg,
+            "c" => self.c_reg,
+            "d" => self.d_reg,
+            "e" => self.e_reg,
+            "f" => self.f_reg,
+            "h" => self.h_reg,
+            "l" => self.l_reg,
+            _ => panic!("Requested value of unknown register ({})", reg)
+        }
+    }
+
+    pub fn is_register(&self, reg: String) -> bool {
+        ["a", "b", "c", "d", "e", "f", "h", "l"].contains(&reg.to_lowercase().as_str())
+    }
+
     fn set_addr(&mut self, addr: u16, value: u8) {
         self.ram_memory.set_addr(addr, value);
     }
@@ -220,7 +277,8 @@ impl<'cpu_impl> CPU<'_> {
                 bytes_count = operand["bytes"].as_u64().unwrap() as usize;
             }
             
-            let mut param = Param::new(operand["name"].as_str().unwrap().to_string(), is_immediate, bytes_count);
+            let param_name = operand["name"].as_str().unwrap().to_string();
+            let mut param = Param::new(param_name.clone(), is_immediate, bytes_count);
             
             let value: MemValue = match param.get_name().as_str() {
                 "a16" => {
@@ -242,7 +300,19 @@ impl<'cpu_impl> CPU<'_> {
                 "r8" => {
                     MemValue::SignedByte(self.get_addr(self.pc_reg + 1) as i8)
                 },
-                _ => unimplemented!("Parameter type ({})", param.get_name())
+                "a8" => {
+                    MemValue::Byte(self.get_addr(self.pc_reg + 1))
+                },
+                _ => {
+                    let chars = param_name.clone();
+                    for c in chars.chars() {
+                        if !self.is_register(c.to_string()) {
+                            panic!("Unknown param name, should be register but isn't ({})", c);
+                        }
+                    }
+
+                    MemValue::Register(param_name)
+                }                
             };
 
             param.set_param_value(value);

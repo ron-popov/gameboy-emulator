@@ -1,10 +1,11 @@
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum MemValue {
     Null,
     Bool(bool),
     Byte(u8),
     Double(u16),
-    SignedByte(i8)
+    SignedByte(i8),
+    Register(String)
 }
 
 #[derive(Debug)]
@@ -53,31 +54,46 @@ impl Param {
         self.name.clone()
     }
 
+    pub fn get_value(&self) -> MemValue {
+        self.value.clone()
+    }
+
+    pub fn is_immediate(&self) -> bool {
+        self.immediate
+    }
+
     pub fn get_signed_byte(&self) -> i8 {
         match self.value {
             MemValue::SignedByte(value) => value,
-            _ => panic!("Tries getting param value as signed byte, but it is {:?}", self.value)    
+            _ => panic!("Tries getting param value as signed byte, but it is {:?}", self.value)
+        }
+    }
+
+    pub fn get_target_register(&self) -> String {
+        match &self.value {
+            MemValue::Register(value) => value.to_string(),
+            _ => panic!("Tries getting param value as register, but it is {:?}", self.value)
         }
     }
 
     pub fn get_double(&self) -> u16 {
         match self.value {
             MemValue::Double(value) => value,
-            _ => panic!("Tries getting param value as double, but it is {:?}", self.value)    
+            _ => panic!("Tries getting param value as double, but it is {:?}", self.value)
         }
     }
 
     pub fn get_byte(&self) -> u8 {
         match self.value {
             MemValue::Byte(value) => value,
-            _ => panic!("Tries getting param value as byte, but it is {:?}", self.value)    
+            _ => panic!("Tries getting param value as byte, but it is {:?}", self.value)
         }
     }
 
     pub fn get_bool(&self) -> bool {
         match self.value {
             MemValue::Bool(value) => value,
-            _ => panic!("Tries getting param value as bool, but it is {:?}", self.value)    
+            _ => panic!("Tries getting param value as bool, but it is {:?}", self.value)
         }
     }
 
