@@ -156,26 +156,52 @@ impl<'cpu_impl> CPU<'_> {
                         let mut write_value: MemValue = MemValue::Null;
 
                         match read_param.get_value() {
-                            MemValue::Register(register_name) => {
-                                if read_param.is_immediate() {
-                                    unimplemented!("Loading from immediate value");
-                                } else {
-                                    match register_name.len() {
-                                        1 => {
-                                            write_value = MemValue::Byte(self.get_register(register_name));
-                                        },
-                                        2 => {
-                                            let mut chars = register_name.chars();
-                                            let target_addr = (self.get_register(chars.next().unwrap().to_string()) as u16) << 8 + 
-                                                self.get_register(chars.next().unwrap().to_string()) as u16;
-                                            write_value = MemValue::Byte(self.get_addr(target_addr));
-                                            
-                                        }, 
-                                        _ => panic!("Invalid register name length")
-                                    }
+                            MemValue::Register(reg_name) => {
+                                match reg_name.len() {
+                                    1 => {
+                                        let reg_value = self.get_register(reg_name);
+                                        if read_param.is_immediate() {
+                                            write_value = MemValue::Byte(reg_value);
+                                        } else {
+                                            unimplemented!("Load from single register not immediate value")
+                                        }
+                                    },
+                                    2 => {
+                                        let mut chars = reg_name.chars();
+                                        let reg_value = (self.get_register(chars.next().unwrap().to_string()) as u16) << 8 + 
+                                            self.get_register(chars.next().unwrap().to_string()) as u16;
+                                        if read_param.is_immediate() {
+                                            write_value = MemValue::Double(reg_value);
+                                        } else {
+                                            write_value = MemValue::Byte(self.get_addr(reg_value));
+                                        }
+                                        
+                                    },
+                                    _ => panic!("Invalid register name length")
                                 }
                             },
+                            MemValue::Byte(_) => write_value = read_param.get_value(),
                             _ => panic!("Tried running LD from unknown param type ({:?})", read_param)
+                        }
+
+                        match target_param.get_value() {
+                            MemValue::Register(reg_name) => {
+                                match reg_name.len() {
+                                    1 => {
+                                        match write_value {
+                                            MemValue::Byte(value) => {
+                                                self.set_register(reg_name, value)
+                                            },
+                                            _ => panic!("Invalid type to load to a single register")
+                                        }
+                                    },
+                                    2 => {
+                                        unimplemented!("Load to a double register")
+                                    },
+                                    _ => panic!("Invalid register name length")
+                                }
+                            },
+                            _ => panic!("Tried writing to unknown param type ({:?})", target_param)
                         }
                     },
                     _ => {
@@ -243,6 +269,20 @@ impl<'cpu_impl> CPU<'_> {
             "h" => self.h_reg,
             "l" => self.l_reg,
             _ => panic!("Requested value of unknown register ({})", reg)
+        }
+    }
+
+    fn set_register(&mut self, reg: String, value: u8) {
+        match reg.to_lowercase().as_str() {
+            "a" => self.a_reg = value,
+            "b" => self.b_reg = value,
+            "c" => self.c_reg = value,
+            "d" => self.d_reg = value,
+            "e" => self.e_reg = value,
+            "f" => self.f_reg = value,
+            "h" => self.h_reg = value,
+            "l" => self.l_reg = value,
+            _ => panic!("Requested writing to unknown register ({})", reg)
         }
     }
 
