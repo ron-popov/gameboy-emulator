@@ -64,7 +64,7 @@ mod cpu_tests {
     }
 
     #[test]
-    fn test_cpu_instructions() {
+    fn test_cpu_jp_ld_cp() {
         let test_rom = Rom::create_test_rom();
         let ram_memory = &mut RamMemory::init_from_rom(&test_rom);
 
