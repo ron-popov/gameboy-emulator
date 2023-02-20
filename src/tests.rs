@@ -74,11 +74,15 @@ mod cpu_tests {
         ram_memory.set_addr(0x0101, 0x00);
         ram_memory.set_addr(0x0102, 0x02);
 
+        // Load instruction setup
+        //      Load 0x11 to a register
+        ram_memory.set_addr(0x0200, 0x3E);
+        ram_memory.set_addr(0x0201, 0x11);
+        
         // Compare instruction setup at 0x0200
-        //      Compare with 0x50
-        //      TODO: Load value into a register and check half carry
-        ram_memory.set_addr(0x0200, 0xFE);
-        ram_memory.set_addr(0x0201, 0x50);
+        //      Compare A register with 0x0F
+        ram_memory.set_addr(0x0202, 0xFE);
+        ram_memory.set_addr(0x0203, 0x0F);
 
         let mut cpu: CPU = CPU::init_from_rom(&test_rom, ram_memory);
 
@@ -86,9 +90,14 @@ mod cpu_tests {
         cpu.execute_instruction();
         assert_eq!(cpu.get_program_counter(), 0x0200);
 
+        // Check Load
+        cpu.execute_instruction();
+        assert_eq!(cpu.get_register("A".to_string()), 0x11);
+
         // Check Compare
         cpu.execute_instruction();
         assert_eq!(cpu.get_sub_flag(), true);
+        assert_eq!(cpu.get_half_carry_flag(), true);
 
         // Check Compare
     }

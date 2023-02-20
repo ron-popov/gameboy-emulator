@@ -214,10 +214,6 @@ impl<'cpu_impl> CPU<'_> {
             }
 
         }
-        
-        if opcode == 0x3E {
-            panic!("blaaaa");
-        }
 
         if should_inc_pc {
             self.pc_reg += opcode_data["bytes"].as_u64().unwrap() as u16;
