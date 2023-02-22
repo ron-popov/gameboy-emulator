@@ -59,9 +59,13 @@ fn main() {
     info!("Loading rom \"{}\"", rom.title);
 
     let mut ram_memory = RamMemory::init_from_rom(&rom);
+
     let mut cpu: CPU = CPU::init_from_rom(&rom, &mut ram_memory);
 
     loop {
         cpu.execute_instruction();
     }
 }
+
+
+// TODO: Use refcells
