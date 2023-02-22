@@ -37,9 +37,10 @@ mod cpu_tests {
     use crate::cpu::{CPU, get_opcodes};
     use crate::rom_parser::Rom;
     use crate::ram_memory::{RamMemory};
-
+    
     use std::fs::File;
     use std::io::Read;
+    use simplelog::*;
 
     #[test]
     fn test_ram_memory() {
@@ -100,6 +101,35 @@ mod cpu_tests {
         assert_eq!(cpu.get_half_carry_flag(), true);
 
         // Check Compare
+    }
+
+    #[test]
+    fn run_bully_rom() {
+        CombinedLogger::init(
+            vec![
+                TermLogger::new(LevelFilter::Trace, Config::default(), TerminalMode::Mixed, ColorChoice::Auto)
+            ]
+        ).unwrap();
+
+        let rom_file: File = File::open("roms/bully.gb").expect("Failed opening rom file");
+
+        let rom_content: Vec<u8> = rom_file.bytes().map(|value| {
+            value.expect("Failed reading rom file")
+        }).collect();
+
+        let rom: Rom = Rom::create_from_bytes(rom_content);
+        assert_eq!(rom.title, "BULLYGB");
+
+        let mut ram_memory = RamMemory::init_from_rom(&rom);
+        let mut cpu: CPU = CPU::init_from_rom(&rom, &mut ram_memory);
+
+        let mut instruction_counter: usize = 0x00;
+
+        loop {
+            trace!("Running instruction 0x{:08X}", instruction_counter);
+            cpu.execute_instruction();
+            instruction_counter += 1;
+        }
     }
 
 

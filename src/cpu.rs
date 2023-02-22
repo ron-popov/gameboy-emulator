@@ -103,9 +103,7 @@ impl<'cpu_impl> CPU<'_> {
                 }
             },
             "CP" => { // COMPARE
-                if params.len() != 1 {
-                    panic!("Invalid params count for CP");
-                }
+                assert_eq!(params.len(), 1, "Invalid params count for CP");
 
                 set_sub_flag = MemValue::Bool(true);
 
@@ -208,7 +206,27 @@ impl<'cpu_impl> CPU<'_> {
                         unimplemented!("Load with {} params", params.len())
                     }
                 }
-            }
+            },
+            "LDH" => { // LOAD
+                assert_eq!(params.len(), 2, "Invalid param count to LDH");
+
+                let to_param = params.get(0).unwrap();
+                let from_param = params.get(1).unwrap();
+
+                let from_value: u8;
+                match from_param.get_value() {
+                    MemValue::Byte(value) => {
+                        assert_eq!(from_param.is_immediate(), false, "LDH from immediate byte value");
+                        let from_addr: u16 = 0xFF00 + value as u16;
+                        from_value = self.get_addr(from_addr);
+                    },
+                    MemValue::Register(name) => {
+                        assert_eq!(from_param.is_immediate(), true, "LDH from not immediate register");
+                        from_value = self.get_register(name);
+                    },
+                    _ => panic!("LDH from unknown type ({:?})", from_param.get_value())
+                }
+            },
             _ => {
                 unimplemented!("Opcode name ({})", opcode_data["mnemonic"]);
             }
@@ -218,6 +236,8 @@ impl<'cpu_impl> CPU<'_> {
         if should_inc_pc {
             self.pc_reg += opcode_data["bytes"].as_u64().unwrap() as u16;
         }
+
+        //TODO : Check if this instruction should change flag before changing it
 
         match set_zero_flag {
             MemValue::Bool(value) => {
