@@ -73,16 +73,12 @@ impl<'cpu_impl> CPU<'_> {
             panic!("Opcode data for instruction 0x{:02X} is null", opcode);
         }
 
-        if opcode_data["mnemonic"] == Value::Null {
-            panic!("Opcode 0x{:02X} doesn't have a name", opcode);
-        } else if !opcode_data["mnemonic"].is_string() {
-            panic!("Opcode 0x{:02X} name is not a string (WTF)", opcode);
-        }
+        // Just some checks
+        assert_ne!(opcode_data["mnemonic"], Value::Null, "Opcode 0x{:02X} doesn't have a name", opcode);
+        assert!(opcode_data["mnemonic"].is_string(), "Opcode 0x{:02X} name is not a string (WTF)", opcode);
         
         let opcode_name: &str = opcode_data["mnemonic"].as_str().unwrap();
         let params: Vec<Param> = self.get_params(&opcode_data);
-
-        trace!("Params for this opcode are {:?}", params);
 
         match opcode_name {
             "NOP" => { // NOTHING
@@ -271,7 +267,11 @@ impl<'cpu_impl> CPU<'_> {
 
     // Memory stuff
     fn get_addr(&self, addr: u16) -> u8 {
-        self.ram_memory.get_addr(addr)
+        if addr < RAM_SIZE as u16 {
+            return self.ram_memory.get_addr(addr);
+        } else {
+            todo!("Request addr not in memory (0x{:04X})", addr);
+        }
     }
 
     pub fn get_register(&self, reg: String) -> u8 {
