@@ -262,7 +262,7 @@ impl<'cpu_impl> CPU<'_> {
                 };
 
                 self.a_reg = self.a_reg ^ xor_value;
-                
+
                 set_zero_flag = Some(self.a_reg == 0);
                 set_carry_flag = Some(false);
                 set_sub_flag = Some(false);
@@ -280,32 +280,37 @@ impl<'cpu_impl> CPU<'_> {
 
         //TODO : Check if this instruction should change flag before changing it
 
+        
+        self.verify_flag(opcode_data["flags"]["Z"].as_str().unwrap(), set_zero_flag, "Zero");
         match set_zero_flag {
-            MemValue::Bool(value) => {
+            Some(value) => {
                 self.set_zero_flag(value);
             },
-            _ => ()
+            None => ()
         }
 
+        self.verify_flag(opcode_data["flags"]["N"].as_str().unwrap(), set_sub_flag, "Sub");
         match set_sub_flag {
-            MemValue::Bool(value) => {
+            Some(value) => {
                 self.set_sub_flag(value);
             },
-            _ => ()
+            None => ()
         }
 
+        self.verify_flag(opcode_data["flags"]["H"].as_str().unwrap(), set_half_carry_flag, "Half Carry");
         match set_half_carry_flag {
-            MemValue::Bool(value) => {
+            Some(value) => {
                 self.set_half_carry_flag(value);
             },
-            _ => ()
+            None => ()
         }
 
+        self.verify_flag(opcode_data["flags"]["C"].as_str().unwrap(), set_carry_flag, "Carry");
         match set_carry_flag {
-            MemValue::Bool(value) => {
+            Some(value) => {
                 self.set_carry_flag(value);
             },
-            _ => ()
+            None => ()
         }
 
     }
@@ -459,6 +464,14 @@ impl<'cpu_impl> CPU<'_> {
         } else {
             self.f_reg = self.f_reg & (mask ^ 0b11111111)
         }
+    }
+
+    fn verify_flag(&self, doc: &str, value: Option<bool>, name: &str) {
+        trace!("Checking Flag {}, with doc \"{}\" and value \"{:?}\"", name, doc, value);
+        if doc == "-" { assert!(value == Option::None, "{} Flag should be empty", name);}
+        if doc != "-" { assert!(value != Option::None, "{} Flag cannot be empty", name); }
+        if doc == "1" { assert!(value == Option::Some(true), "{} Flag has to be true", name); }
+        if doc == "0" { assert!(value == Option::Some(false), "{} Flag has to be false", name); }
     }
 
     fn get_flag(&self, mask: u8) -> bool {
