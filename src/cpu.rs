@@ -42,7 +42,7 @@ impl<'cpu_impl> CPU<'_> {
             f_reg: 0,
             h_reg: 0,
             l_reg: 0,
-            pc_reg: 0x0100,
+            pc_reg: 0x0000,
             sp_reg: 0xFFFE,
             opcodes: opcodes
         }
@@ -124,6 +124,17 @@ impl<'cpu_impl> CPU<'_> {
                 set_half_carry_flag = MemValue::Bool((((self.a_reg & 0xf).wrapping_sub(param & 0xf)) & 0x10) != 0);
             },
             "JR" => { // RELATIVE JUMP, SOMETIMES CONDITIONAL
+                // match params.len() {
+                //     1 => {
+                //         let jump_addr_param = params.get(0).unwrap();
+                //         self.pc_reg = self.pc_reg.wrapping_add_signed(jump_addr_param.get_signed_byte() as i16);
+                //         should_inc_pc = false;
+                //     },
+                //     2 => {
+
+                //     },
+                //     _ => panic!("Unknown number of params to JR ({})", params.len())
+                // };
                 if params.len() == 1 {
                     let jump_addr_param = params.get(0).unwrap();
                     self.pc_reg = self.pc_reg.wrapping_add_signed(jump_addr_param.get_signed_byte() as i16);
@@ -131,7 +142,7 @@ impl<'cpu_impl> CPU<'_> {
                 } else if params.len() == 2 {
                     let condition_param = params.get(0).unwrap();
 
-                    if condition_param.get_bool() {
+                    if self.get_condition_value(condition_param.get_name()) {
                         let jump_addr_param = params.get(1).unwrap();
                         self.pc_reg = self.pc_reg.wrapping_add_signed(jump_addr_param.get_signed_byte() as i16);
                         should_inc_pc = false;
@@ -150,7 +161,7 @@ impl<'cpu_impl> CPU<'_> {
                         let mut write_value: MemValue = MemValue::Null;
 
                         match read_param.get_value() {
-                            MemValue::Register(reg_name) => {
+                            MemValue::Name(reg_name) => {
                                 match reg_name.len() {
                                     1 => {
                                         let reg_value = self.get_register(reg_name);
@@ -175,13 +186,15 @@ impl<'cpu_impl> CPU<'_> {
                                 }
                             },
                             MemValue::Byte(_) => write_value = read_param.get_value(),
+                            MemValue::Double(_) => write_value = read_param.get_value(),
                             _ => panic!("Tried running LD from unknown param type ({:?})", read_param)
                         }
 
                         match target_param.get_value() {
-                            MemValue::Register(reg_name) => {
+                            MemValue::Name(reg_name) => {
                                 match reg_name.len() {
                                     1 => {
+                                        // TODO: Refactor this shit
                                         match write_value {
                                             MemValue::Byte(value) => {
                                                 self.set_register(reg_name, value)
@@ -190,7 +203,13 @@ impl<'cpu_impl> CPU<'_> {
                                         }
                                     },
                                     2 => {
-                                        unimplemented!("Load to a double register")
+                                        // TODO: Refactor this shit
+                                        match write_value {
+                                            MemValue::Double(value) => {
+                                                self.set_double_register(reg_name, value)
+                                            },
+                                            _ => panic!("Invalid type to load to a double register")
+                                        }
                                     },
                                     _ => panic!("Invalid register name length")
                                 }
@@ -216,7 +235,7 @@ impl<'cpu_impl> CPU<'_> {
                         let from_addr: u16 = 0xFF00 + value as u16;
                         from_value = self.get_addr(from_addr);
                     },
-                    MemValue::Register(name) => {
+                    MemValue::Name(name) => {
                         assert_eq!(from_param.is_immediate(), true, "LDH from not immediate register");
                         from_value = self.get_register(name);
                     },
@@ -270,7 +289,8 @@ impl<'cpu_impl> CPU<'_> {
         if addr < RAM_SIZE as u16 {
             return self.ram_memory.get_addr(addr);
         } else {
-            todo!("Request addr not in memory (0x{:04X})", addr);
+            return 0xFF;
+            // todo!("Request addr not in memory (0x{:04X})", addr);
         }
     }
 
@@ -299,6 +319,24 @@ impl<'cpu_impl> CPU<'_> {
             "h" => self.h_reg = value,
             "l" => self.l_reg = value,
             _ => panic!("Requested writing to unknown register ({})", reg)
+        }
+    }
+
+    fn set_double_register(&mut self, reg: String, value: u16) {
+        assert_eq!(reg.len(), 2, "Double register name is not of len 2");
+
+        match reg.to_uppercase().as_str() {
+            "SP" => self.sp_reg = value,
+            _ => {
+                let first_reg: String = reg[0..1].to_string();
+                let second_reg: String = reg[1..2].to_string();
+
+                let msb: u8 = (value >> 8) as u8;
+                let lsb: u8 = (value & 0xFF) as u8;
+
+                self.set_register(first_reg, msb);
+                self.set_register(second_reg, lsb);
+            }
         }
     }
 
@@ -350,9 +388,6 @@ impl<'cpu_impl> CPU<'_> {
                 "d8" => {
                     MemValue::Byte(self.get_addr(self.pc_reg + 1))
                 },
-                "NZ" => {
-                    MemValue::Bool(!self.get_zero_flag())
-                },
                 "r8" => {
                     MemValue::SignedByte(self.get_addr(self.pc_reg + 1) as i8)
                 },
@@ -362,12 +397,12 @@ impl<'cpu_impl> CPU<'_> {
                 _ => {
                     let chars = param_name.clone();
                     for c in chars.chars() {
-                        if !self.is_register(c.to_string()) {
-                            panic!("Unknown param name, should be register but isn't ({})", c);
+                        if !c.is_alphabetic() {
+                            panic!("Invalid char ({})", c)
                         }
                     }
 
-                    MemValue::Register(param_name)
+                    MemValue::Name(param_name)
                 }                
             };
 
@@ -379,6 +414,16 @@ impl<'cpu_impl> CPU<'_> {
         }
         
         return_value
+    }
+
+    fn get_condition_value(&self, cond: String) -> bool {
+        match cond.to_uppercase().as_str() {
+            "Z" => self.get_zero_flag(),
+            "NZ" => !self.get_zero_flag(),
+            "C" => self.get_carry_flag(),
+            "NC" => !self.get_carry_flag(),
+            _ => panic!("Unknown condition ({})", cond)
+        }
     }
 
     // Flags stuff
@@ -427,3 +472,4 @@ impl<'cpu_impl> CPU<'_> {
     }
 
 }
+

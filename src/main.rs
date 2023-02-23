@@ -13,11 +13,14 @@ mod param;
 mod tests;
 mod cpu;
 mod opcodes;
+mod ppu;
 
 // use consts::*;
 use rom_parser::Rom;
 use ram_memory::RamMemory;
 use cpu::CPU;
+
+use crate::{ppu::PPU, consts::DMG_BOOT_ROM};
 
 fn main() {
     let args = Command::new("gbemulator")
@@ -29,6 +32,10 @@ fn main() {
         .short('v')
         .long("verbose")
         .action(ArgAction::Count))
+    .arg(Arg::new("boot_rom")
+        .short('b')
+        .long("boot-rom")
+        .action(ArgAction::SetTrue))
     .get_matches();
 
     let log_level: LevelFilter = match args.get_count("verbose") {
@@ -60,10 +67,22 @@ fn main() {
 
     let mut ram_memory = RamMemory::init_from_rom(&rom);
 
+    if args.get_flag("boot_rom") {
+        for (i,x) in DMG_BOOT_ROM.iter().enumerate() {
+            ram_memory.set_addr(i as u16, *x);
+        }
+    }
+
+    let mut ppu: PPU = PPU::init();
     let mut cpu: CPU = CPU::init_from_rom(&rom, &mut ram_memory);
 
     loop {
+        if cpu.get_program_counter() == 0x0100 {
+            panic!("No more boot rom");
+        }
+        
         cpu.execute_instruction();
+        ppu.render();
     }
 }
 

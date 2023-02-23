@@ -5,7 +5,7 @@ pub enum MemValue {
     Byte(u8),
     Double(u16),
     SignedByte(i8),
-    Register(String)
+    Name(String)
 }
 
 #[derive(Debug)]
@@ -69,12 +69,12 @@ impl Param {
         }
     }
 
-    pub fn get_target_register(&self) -> String {
-        match &self.value {
-            MemValue::Register(value) => value.to_string(),
-            _ => panic!("Tries getting param value as register, but it is {:?}", self.value)
-        }
-    }
+    // pub fn get_name(&self) -> String {
+    //     match &self.value {
+    //         MemValue::Name(value) => value.to_string(),
+    //         _ => panic!("Tries getting param value as register, but it is {:?}", self.value)
+    //     }
+    // }
 
     pub fn get_double(&self) -> u16 {
         match self.value {
