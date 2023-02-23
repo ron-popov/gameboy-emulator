@@ -3,8 +3,7 @@ use minifb::{Window, WindowOptions, Scale};
 
 pub struct PPU {
     buffer: Vec<u32>,
-    window: Window,
-    index: usize
+    window: Window
 }
 
 impl PPU {
@@ -27,8 +26,7 @@ impl PPU {
 
         PPU {
             buffer: [0; SCREEN_HEIGHT * SCREEN_WIDHT].to_vec(),
-            window: window,
-            index: 0
+            window: window
         }
     }
 
