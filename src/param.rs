@@ -69,13 +69,6 @@ impl Param {
         }
     }
 
-    // pub fn get_name(&self) -> String {
-    //     match &self.value {
-    //         MemValue::Name(value) => value.to_string(),
-    //         _ => panic!("Tries getting param value as register, but it is {:?}", self.value)
-    //     }
-    // }
-
     pub fn get_double(&self) -> u16 {
         match self.value {
             MemValue::Double(value) => value,

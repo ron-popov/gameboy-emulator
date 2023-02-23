@@ -52,10 +52,10 @@ impl<'cpu_impl> CPU<'_> {
         let mut opcode = self.get_addr(self.pc_reg);
         let opcode_data: Value;
         let mut should_inc_pc = true;
-        let mut set_zero_flag: MemValue = MemValue::Null;
-        let mut set_carry_flag: MemValue = MemValue::Null;
-        let mut set_sub_flag: MemValue = MemValue::Null;
-        let mut set_half_carry_flag: MemValue = MemValue::Null;
+        let mut set_zero_flag: Option<bool> = Option::None;
+        let mut set_carry_flag: Option<bool> = Option::None;
+        let mut set_sub_flag: Option<bool> = Option::None;
+        let mut set_half_carry_flag: Option<bool> = Option::None;
         
         if opcode == 0xCB {
             opcode = self.get_addr(self.pc_reg + 1);
@@ -101,27 +101,27 @@ impl<'cpu_impl> CPU<'_> {
             "CP" => { // COMPARE
                 assert_eq!(params.len(), 1, "Invalid params count for CP");
 
-                set_sub_flag = MemValue::Bool(true);
+                set_sub_flag = Some(true);
 
                 let param = params.get(0).unwrap().get_byte();
                 match self.a_reg.checked_sub(param) {
                     Some(sub_result) => {
                         // Valid sub result
-                        set_carry_flag = MemValue::Bool(false);
+                        set_carry_flag = Some(false);
                         
                         if sub_result == 0 {
-                            set_zero_flag = MemValue::Bool(true);
+                            set_zero_flag = Some(true);
                         } else {
-                            set_zero_flag = MemValue::Bool(false);
+                            set_zero_flag = Some(false);
                         }
                     }, 
                     None => {
                         //Underflow happened
-                        set_carry_flag = MemValue::Bool(true);
+                        set_carry_flag = Some(true);
                     }
                 }
 
-                set_half_carry_flag = MemValue::Bool((((self.a_reg & 0xf).wrapping_sub(param & 0xf)) & 0x10) != 0);
+                set_half_carry_flag = Some((((self.a_reg & 0xf).wrapping_sub(param & 0xf)) & 0x10) != 0);
             },
             "JR" => { // RELATIVE JUMP, SOMETIMES CONDITIONAL
                 // match params.len() {
@@ -194,7 +194,7 @@ impl<'cpu_impl> CPU<'_> {
                             MemValue::Name(reg_name) => {
                                 match reg_name.len() {
                                     1 => {
-                                        // TODO: Refactor this shit
+                                        // TODO: Refactor this shit, maybe with a macro?
                                         match write_value {
                                             MemValue::Byte(value) => {
                                                 self.set_register(reg_name, value)
@@ -203,7 +203,6 @@ impl<'cpu_impl> CPU<'_> {
                                         }
                                     },
                                     2 => {
-                                        // TODO: Refactor this shit
                                         match write_value {
                                             MemValue::Double(value) => {
                                                 self.set_double_register(reg_name, value)
@@ -242,6 +241,33 @@ impl<'cpu_impl> CPU<'_> {
                     _ => panic!("LDH from unknown type ({:?})", from_param.get_value())
                 }
             },
+            "XOR" => { // XOR
+                assert_eq!(params.len(), 1, "Invalid param count to XOR");
+
+                let from_param = params.get(0).unwrap();
+
+                let xor_value: u8;
+                match from_param.get_value() {
+                    MemValue::Byte(value) => {
+                        xor_value = value;
+                    },
+                    MemValue::Name(name) => {
+                        xor_value = self.get_register(name);
+                    },
+                    MemValue::Double(addr) => {
+                        assert_eq!(from_param.is_immediate(), true, "Tried running XOR with Double immediate value???");
+                        xor_value = self.get_addr(addr)
+                    }
+                    _ => panic!("Unknown type to run XOR with ({:?})", from_param.get_value())
+                };
+
+                self.a_reg = self.a_reg ^ xor_value;
+                
+                set_zero_flag = Some(self.a_reg == 0);
+                set_carry_flag = Some(false);
+                set_sub_flag = Some(false);
+                set_half_carry_flag = Some(false);
+            }
             _ => {
                 unimplemented!("Opcode name ({})", opcode_data["mnemonic"]);
             }
