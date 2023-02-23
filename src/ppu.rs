@@ -30,6 +30,14 @@ impl PPU {
         }
     }
 
+    pub fn set_addr(&mut self, addr: u16, value: u8) {
+        
+    }
+
+    pub fn get_addr(&self, addr: u16) -> u8 {
+        0xFF
+    }
+
     pub fn render(&mut self){
         trace!("Rendering frame");
         self.window.update_with_buffer(&self.buffer, SCREEN_WIDHT, SCREEN_HEIGHT).unwrap_or_else(|e| {

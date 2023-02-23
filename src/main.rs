@@ -1,7 +1,7 @@
 #[macro_use] extern crate log;
 extern crate simplelog;
 
-use std::io::Read;
+use std::{io::Read, cell::RefCell};
 use std::fs::File;
 use simplelog::*;
 use clap::{Command, Arg, ArgAction};
@@ -65,24 +65,40 @@ fn main() {
     let rom: Rom = Rom::create_from_bytes(rom_content);
     info!("Loading rom \"{}\"", rom.title);
 
-    let mut ram_memory = RamMemory::init_from_rom(&rom);
+    let orig_ram_memory = RamMemory::init_from_rom(&rom);
+    let ram_memory_refcell: RefCell<RamMemory> = RefCell::new(orig_ram_memory);
 
+    let mut ram_memory = ram_memory_refcell.borrow_mut();
     if args.get_flag("boot_rom") {
         for (i,x) in DMG_BOOT_ROM.iter().enumerate() {
             ram_memory.set_addr(i as u16, *x);
         }
     }
 
-    let mut ppu: PPU = PPU::init();
-    let mut cpu: CPU = CPU::init_from_rom(&rom, &mut ram_memory);
+    use std::mem::forget;
+    forget(ram_memory);
+
+    let orig_ppu: PPU = PPU::init();
+    let ppu_refcell: RefCell<PPU> = RefCell::new(orig_ppu);
+    let mut cpu: CPU = CPU::init_from_rom(ram_memory_refcell, &ppu_refcell);
 
     loop {
         if cpu.get_program_counter() == 0x0100 {
             panic!("No more boot rom");
         }
-        
+
         cpu.execute_instruction();
-        ppu.render();
+
+        match ppu_refcell.try_borrow_mut() {
+            Ok(ppu) => {
+                ppu.render();
+            },
+            Err(_) => {
+                panic!("Failed borrowing ppu")
+            }
+        }
+        // let mut temp_ppu = ppu_refcell.try_borrow_mut();
+        // temp_ppu.render();
     }
 }
 
