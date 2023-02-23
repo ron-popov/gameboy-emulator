@@ -1,5 +1,5 @@
 use crate::consts::*;
-use minifb::{Key, Window, WindowOptions, Scale};
+use minifb::{Window, WindowOptions, Scale};
 
 pub struct PPU {
     buffer: Vec<u32>,

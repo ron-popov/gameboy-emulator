@@ -60,25 +60,34 @@ impl<'cpu_impl> CPU<'_> {
         if opcode == 0xCB {
             opcode = self.get_addr(self.pc_reg + 1);
 
-            debug!("Executing instruction 0x{:02X} from addr {:04X} with 0xCB prefix", opcode, self.pc_reg);
             opcode_data = self.opcodes["cbprefixed"][format!("0x{:02X}", opcode)].clone();
         } else {
-            debug!("Executing instruction 0x{:02X} from addr {:04X}", opcode, self.pc_reg);
             opcode_data = self.opcodes["unprefixed"][format!("0x{:02X}", opcode)].clone();
         }
-
-        trace!("{}", opcode_data);
+            
+        // Just some checks
+        assert_ne!(opcode_data["mnemonic"], Value::Null, "Opcode 0x{:02X} doesn't have a name", opcode);
+        assert!(opcode_data["mnemonic"].is_string(), "Opcode 0x{:02X} name is not a string (WTF)", opcode);
 
         if opcode_data == Value::Null {
             panic!("Opcode data for instruction 0x{:02X} is null", opcode);
         }
-
-        // Just some checks
-        assert_ne!(opcode_data["mnemonic"], Value::Null, "Opcode 0x{:02X} doesn't have a name", opcode);
-        assert!(opcode_data["mnemonic"].is_string(), "Opcode 0x{:02X} name is not a string (WTF)", opcode);
         
+        // Parsing
         let opcode_name: &str = opcode_data["mnemonic"].as_str().unwrap();
         let params: Vec<Param> = self.get_params(&opcode_data);
+
+        // Prints
+        let mut param_data: String = "".to_string();
+        for param in &params {
+            if !param.is_immediate() {
+                param_data += format!("({}) ", param.get_name()).as_str();
+            } else {
+                param_data += format!("{} ", param.get_name()).as_str();
+            }
+        }
+        debug!("0x{:04X} -> {} {}", self.pc_reg, opcode_name, param_data);
+        trace!("{}", opcode_data);
 
         match opcode_name {
             "NOP" => { // NOTHING
@@ -158,7 +167,7 @@ impl<'cpu_impl> CPU<'_> {
                         let target_param = params.get(0).unwrap();
                         let read_param = params.get(1).unwrap();
     
-                        let mut write_value: MemValue = MemValue::Null;
+                        let write_value: MemValue;
 
                         match read_param.get_value() {
                             MemValue::Name(reg_name) => {
@@ -207,7 +216,15 @@ impl<'cpu_impl> CPU<'_> {
                                             MemValue::Double(value) => {
                                                 self.set_double_register(reg_name, value)
                                             },
-                                            _ => panic!("Invalid type to load to a double register")
+                                            MemValue::Byte(value) => {
+                                                assert_eq!(target_param.is_immediate(), false);
+                                                let target_addr: u16 = self.get_double_register(reg_name);
+
+                                                self.set_addr(target_addr, value);
+                                                todo!("WIP");
+                                                // if target_param.
+                                            }
+                                            _ => panic!("Invalid type to load to a double register ({:?})", write_value)
                                         }
                                     },
                                     _ => panic!("Invalid register name length")
@@ -353,6 +370,16 @@ impl<'cpu_impl> CPU<'_> {
         }
     }
 
+    fn get_double_register(&self, reg: String) -> u16 {
+        let first_reg: String = reg[0..1].to_string();
+        let second_reg: String = reg[1..2].to_string();
+
+        let mut value: u16 = self.get_register(first_reg) as u16;
+        value += (self.get_register(second_reg) as u16) << 8;
+
+        return value;
+    }
+
     fn set_double_register(&mut self, reg: String, value: u16) {
         assert_eq!(reg.len(), 2, "Double register name is not of len 2");
 
@@ -391,19 +418,8 @@ impl<'cpu_impl> CPU<'_> {
 
         let mut return_value = Vec::<Param>::new();
 
-        for operand in opcode_data["operands"].as_array().unwrap() {
-            let is_immediate: bool = operand["immediate"] != Value::Null && operand["immediate"].as_bool().unwrap();
-            let mut bytes_count: usize = 0;
-            if operand["bytes"] != Value::Null {
-                if !operand["bytes"].is_u64() {
-                    panic!("Invalid operand bytes type");
-                }
-
-                bytes_count = operand["bytes"].as_u64().unwrap() as usize;
-            }
-            
-            let param_name = operand["name"].as_str().unwrap().to_string();
-            let mut param = Param::new(param_name.clone(), is_immediate, bytes_count);
+        for operand in opcode_data["operands"].as_array().unwrap() {           
+            let mut param = Param::new(operand.clone());
             
             let value: MemValue = match param.get_name().as_str() {
                 "a16" => {
@@ -426,14 +442,14 @@ impl<'cpu_impl> CPU<'_> {
                     MemValue::Byte(self.get_addr(self.pc_reg + 1))
                 },
                 _ => {
-                    let chars = param_name.clone();
+                    let chars = param.get_name().clone();
                     for c in chars.chars() {
                         if !c.is_alphabetic() {
                             panic!("Invalid char ({})", c)
                         }
                     }
 
-                    MemValue::Name(param_name)
+                    MemValue::Name(param.get_name())
                 }                
             };
 

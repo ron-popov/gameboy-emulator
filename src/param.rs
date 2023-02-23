@@ -1,3 +1,5 @@
+use serde_json::Value;
+
 #[derive(Debug, Clone)]
 pub enum MemValue {
     Null,
@@ -11,19 +13,31 @@ pub enum MemValue {
 #[derive(Debug)]
 pub struct Param {
     name: String,
-    immediate: bool,
-    bytes: usize,
-    value: MemValue
+    value: MemValue,
+    json_value: Value
 }
 
 impl Param {
-    pub fn new(name: String, immediate: bool, bytes: usize) -> Param {
+    pub fn new(json_value: Value) -> Param {
         Param {
-            name: name,
-            immediate: immediate,
-            bytes: bytes,
-            value: MemValue::Null
+            name: json_value["name"].as_str().unwrap().to_string(),
+            value: MemValue::Null,
+            json_value: json_value
         }
+    }
+
+    pub fn get_bytes(&self) -> u8 {
+        let mut bytes_count: u8 = 0;
+        if self.json_value["bytes"] != Value::Null {
+            if !self.json_value["bytes"].is_u64() {
+                panic!("Invalid operand bytes type");
+            }
+
+            bytes_count = self.json_value["bytes"].as_u64().unwrap() as u8;
+        }
+
+        return bytes_count;
+
     }
 
     pub fn set_bool(&mut self, value: bool) {
@@ -59,7 +73,7 @@ impl Param {
     }
 
     pub fn is_immediate(&self) -> bool {
-        self.immediate
+        self.json_value["immediate"] != Value::Null && self.json_value["immediate"].as_bool().unwrap()
     }
 
     pub fn get_signed_byte(&self) -> i8 {
