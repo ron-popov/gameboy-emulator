@@ -39,27 +39,7 @@ impl Param {
         return bytes_count;
 
     }
-
-    pub fn set_bool(&mut self, value: bool) {
-        self.value = MemValue::Bool(value);
-    }
-
-    pub fn set_byte(&mut self, value: u8) {
-        self.value = MemValue::Byte(value);
-    }
-
-    pub fn set_double(&mut self, value: u16) {
-        self.value = MemValue::Double(value);
-    }
-
-    pub fn set_signed_byte(&mut self, value: i8) {
-        self.value = MemValue::SignedByte(value);
-    }
-
-    pub fn set_null(&mut self) {
-        self.value = MemValue::Null;
-    }
-
+    
     pub fn set_param_value(&mut self, value: MemValue) {
         self.value = value;
     } 

@@ -397,11 +397,7 @@ impl<'cpu_impl> CPU<'_> {
             }
         }
     }
-
-    pub fn is_register(&self, reg: String) -> bool {
-        ["a", "b", "c", "d", "e", "f", "h", "l"].contains(&reg.to_lowercase().as_str())
-    }
-
+    
     fn set_addr(&mut self, addr: u16, value: u8) {
         self.ram_memory.set_addr(addr, value);
     }

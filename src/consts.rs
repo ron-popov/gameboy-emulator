@@ -1,6 +1,4 @@
 // General
-pub const PLACEHOLDER_VALUE_U8: u8 = 0x23;
-pub const OPCODES_JSON_PATH: &str = "src/opcodes.json";
 pub const SCREEN_WIDHT: usize = 160;
 pub const SCREEN_HEIGHT: usize = 144;
 
