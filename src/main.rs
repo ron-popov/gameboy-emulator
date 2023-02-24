@@ -1,8 +1,10 @@
 #[macro_use] extern crate log;
 extern crate simplelog;
 
-use std::{io::Read, cell::RefCell};
+use std::{io::Read};
+use std::sync::Arc;
 use std::fs::File;
+use std::mem::forget;
 use simplelog::*;
 use clap::{Command, Arg, ArgAction};
 
@@ -66,39 +68,34 @@ fn main() {
     info!("Loading rom \"{}\"", rom.title);
 
     let orig_ram_memory = RamMemory::init_from_rom(&rom);
-    let ram_memory_refcell: RefCell<RamMemory> = RefCell::new(orig_ram_memory);
+    let mut ram_memory_arc: Arc<RamMemory> = Arc::new(orig_ram_memory);
 
-    let mut ram_memory = ram_memory_refcell.borrow_mut();
+    // Init boot rom
     if args.get_flag("boot_rom") {
+        let ram_memory = Arc::get_mut(&mut ram_memory_arc).expect("Failed getting ram_memory as mutable, when loading boot rom");
         for (i,x) in DMG_BOOT_ROM.iter().enumerate() {
             ram_memory.set_addr(i as u16, *x);
         }
+        forget(ram_memory);
     }
 
-    use std::mem::forget;
-    forget(ram_memory);
-
     let orig_ppu: PPU = PPU::init();
-    let ppu_refcell: RefCell<PPU> = RefCell::new(orig_ppu);
-    let mut cpu: CPU = CPU::init_from_rom(ram_memory_refcell, &ppu_refcell);
+    let mut ppu_arc: Arc<PPU> = Arc::new(orig_ppu);
+
+    // let mut cpu: CPU = CPU::init_from_rom(Arc::clone(&ram_memory_arc), Arc::clone(&ppu_arc));
 
     loop {
-        if cpu.get_program_counter() == 0x0100 {
-            panic!("No more boot rom");
-        }
+        // Only run boot rom for now
+        // if cpu.get_program_counter() == 0x0100 {
+            // panic!("No more boot rom");
+        // }
 
-        cpu.execute_instruction();
+        // Execute a single cpu instruction
+        // cpu.execute_instruction();
 
-        match ppu_refcell.try_borrow_mut() {
-            Ok(ppu) => {
-                ppu.render();
-            },
-            Err(_) => {
-                panic!("Failed borrowing ppu")
-            }
-        }
-        // let mut temp_ppu = ppu_refcell.try_borrow_mut();
-        // temp_ppu.render();
+        // Render screen (if needed)
+        let ppu: &mut PPU = Arc::get_mut(&mut ppu_arc).expect("Failed getting ppu as mutable during emulator loop");
+        ppu.render();
     }
 }
 
