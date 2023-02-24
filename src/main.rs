@@ -1,8 +1,8 @@
 #[macro_use] extern crate log;
 extern crate simplelog;
 
-use std::{io::Read};
 use std::sync::Arc;
+use std::{io::Read};
 use std::fs::File;
 use std::mem::forget;
 use simplelog::*;
@@ -70,19 +70,20 @@ fn main() {
     let orig_ram_memory = RamMemory::init_from_rom(&rom);
     let mut ram_memory_arc: Arc<RamMemory> = Arc::new(orig_ram_memory);
 
+    
+    let orig_ppu: PPU = PPU::init();
+    let mut ppu_arc: Arc<PPU> = Arc::new(orig_ppu);
+    
+    let mut cpu: CPU = CPU::init_from_rom(ram_memory_arc.clone(), ppu_arc.clone());
+    
     // Init boot rom
     if args.get_flag("boot_rom") {
-        let ram_memory = Arc::get_mut(&mut ram_memory_arc).expect("Failed getting ram_memory as mutable, when loading boot rom");
+        let ram_memory = Arc::get_mut(&mut ram_memory_arc).expect("Failed getting mut ram_memory for writing boot rom");
         for (i,x) in DMG_BOOT_ROM.iter().enumerate() {
             ram_memory.set_addr(i as u16, *x);
         }
         forget(ram_memory);
     }
-
-    let orig_ppu: PPU = PPU::init();
-    let mut ppu_arc: Arc<PPU> = Arc::new(orig_ppu);
-
-    // let mut cpu: CPU = CPU::init_from_rom(Arc::clone(&ram_memory_arc), Arc::clone(&ppu_arc));
 
     loop {
         // Only run boot rom for now
@@ -94,7 +95,7 @@ fn main() {
         // cpu.execute_instruction();
 
         // Render screen (if needed)
-        let ppu: &mut PPU = Arc::get_mut(&mut ppu_arc).expect("Failed getting ppu as mutable during emulator loop");
+        let ppu: &mut PPU = Arc::get_mut(&mut ppu_arc).expect("Failed getting mut ppu for rendering screen");
         ppu.render();
     }
 }

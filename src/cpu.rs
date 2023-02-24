@@ -400,15 +400,8 @@ impl CPU {
     }
 
     fn set_addr(&mut self, addr: u16, value: u8) {
-        let ram_memory_borrow = Arc::get_mut(&mut self.ram_memory);
-        match ram_memory_borrow {
-            Some(ram_memory) => {
-                ram_memory.set_addr(addr, value);
-            },
-            None => {
-                panic!("Failed getting ram memory as mutable");
-            }
-        }
+        let ram_memory_borrow = Arc::get_mut(&mut self.ram_memory).expect("Failed getting mut ram_memory for writing");
+        ram_memory_borrow.set_addr(addr, value);
     }
 
     pub fn get_program_counter(&self) -> u16 {
