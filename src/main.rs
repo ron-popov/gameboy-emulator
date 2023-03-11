@@ -1,12 +1,10 @@
 #[macro_use] extern crate log;
 extern crate simplelog;
 
-use std::sync::Arc;
 use std::rc::Rc;
 use std::cell::RefCell;
 use std::{io::Read};
 use std::fs::File;
-use std::mem::forget;
 use simplelog::*;
 use clap::{Command, Arg, ArgAction};
 
@@ -19,7 +17,7 @@ mod cpu;
 mod opcodes;
 mod ppu;
 
-// use consts::*;
+use consts::*;
 use rom_parser::Rom;
 use ram_memory::RamMemory;
 use cpu::CPU;
@@ -55,7 +53,7 @@ fn main() {
     ).unwrap();
 
     // Print ascii art
-    info!("\n   _____ ____                       _       _             \n  / ____|  _ \\                     | |     | |            \n | |  __| |_) | ___ _ __ ___  _   _| | __ _| |_ ___  _ __ \n | | |_ |  _ < / _ \\ \'_ ` _ \\| | | | |/ _` | __/ _ \\| \'__|\n | |__| | |_) |  __/ | | | | | |_| | | (_| | || (_) | |   \n  \\_____|____/ \\___|_| |_| |_|\\__,_|_|\\__,_|\\__\\___/|_|   \n                                                          \n                                                          \n");
+    info!("{}", GBEMULATOR_ASCII_ART);
 
     // Parse rom file
     let rom_file_path: &String = args.get_one("rom_file").expect("Failed getting rom_file_path");
@@ -70,21 +68,19 @@ fn main() {
     info!("Loading rom \"{}\"", rom.title);
 
     let orig_ram_memory = RamMemory::init_from_rom(&rom);
-    let mut ram_memory_arc: Rc<RefCell<RamMemory>> = Rc::new(RefCell::new(orig_ram_memory));
+    let ram_memory_ref: Rc<RefCell<RamMemory>> = Rc::new(RefCell::new(orig_ram_memory));
 
     
     let orig_ppu: PPU = PPU::init();
-    let mut ppu_arc: Rc<RefCell<PPU>> = Rc::new(RefCell::new(orig_ppu));
+    let ppu_ref: Rc<RefCell<PPU>> = Rc::new(RefCell::new(orig_ppu));
     
-    let mut cpu: CPU = CPU::init_from_rom(ram_memory_arc.clone(), ppu_arc.clone());
+    let mut cpu: CPU = CPU::init_with_ram_ppu(ram_memory_ref.clone(), ppu_ref.clone());
     
     // Init boot rom
     if args.get_flag("boot_rom") {
-        let mut ram_memory = ram_memory_arc.borrow_mut();
         for (i,x) in DMG_BOOT_ROM.iter().enumerate() {
-            ram_memory.set_addr(i as u16, *x);
+            ram_memory_ref.borrow_mut().set_addr(i as u16, *x);
         }
-        forget(ram_memory);
     }
 
     loop {
@@ -97,8 +93,7 @@ fn main() {
         cpu.execute_instruction();
 
         // Render screen (if needed)
-        let ppu: &mut PPU = &mut ppu_arc.borrow_mut();
-        ppu.render();
+        ppu_ref.borrow_mut().render();
     }
 }
 

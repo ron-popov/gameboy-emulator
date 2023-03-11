@@ -5,7 +5,6 @@ use crate::opcodes::OPCODES_JSON;
 use crate::param::{Param, MemValue};
 
 use serde_json::Value;
-use std::sync::Arc;
 use std::rc::Rc;
 use std::cell::RefCell;
 
@@ -15,8 +14,8 @@ pub fn get_opcodes() -> Value {
 
 #[readonly::make]
 pub struct CPU {
-    ram_memory: Rc<RefCell<RamMemory>>,
-    ppu: Rc<RefCell<PPU>>,
+    ram_memory_ref: Rc<RefCell<RamMemory>>,
+    ppu_ref: Rc<RefCell<PPU>>,
     a_reg: u8,
     b_reg: u8,
     c_reg: u8,
@@ -31,12 +30,12 @@ pub struct CPU {
 }
 
 impl CPU {
-    pub fn init_from_rom(ram_memory: Rc<RefCell<RamMemory>>, ppu: Rc<RefCell<PPU>>) -> CPU {
+    pub fn init_with_ram_ppu(ram_memory_ref: Rc<RefCell<RamMemory>>, ppu_ref: Rc<RefCell<PPU>>) -> CPU {
         let opcodes = get_opcodes();
 
         CPU {
-            ram_memory: ram_memory,
-            ppu: ppu,
+            ram_memory_ref: ram_memory_ref,
+            ppu_ref: ppu_ref,
             a_reg: 0,
             b_reg: 0,
             c_reg: 0,
@@ -338,7 +337,7 @@ impl CPU {
     // Memory stuff
     fn get_addr(&self, addr: u16) -> u8 {
         if addr < RAM_SIZE as u16 {
-            return self.ram_memory.borrow_mut().get_addr(addr);
+            return self.ram_memory_ref.borrow_mut().get_addr(addr);
         } else {
             return 0xFF;
             // todo!("Request addr not in memory (0x{:04X})", addr);
@@ -402,8 +401,7 @@ impl CPU {
     }
 
     fn set_addr(&mut self, addr: u16, value: u8) {
-        let mut ram_memory_borrow = self.ram_memory.borrow_mut();
-        ram_memory_borrow.set_addr(addr, value);
+        self.ram_memory_ref.borrow_mut().set_addr(addr, value);
     }
 
     pub fn get_program_counter(&self) -> u16 {

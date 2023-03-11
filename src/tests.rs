@@ -85,7 +85,7 @@ mod cpu_tests {
         ram_memory.set_addr(0x0202, 0xFE);
         ram_memory.set_addr(0x0203, 0x0F);
 
-        let mut cpu: CPU = CPU::init_from_rom(&test_rom, ram_memory);
+        let mut cpu: CPU = CPU::init_with_ram_ppu(ram_memory);
 
         // Check Jump
         cpu.execute_instruction();
@@ -102,35 +102,5 @@ mod cpu_tests {
 
         // Check Compare
     }
-
-    #[test]
-    fn run_bully_rom() {
-        CombinedLogger::init(
-            vec![
-                TermLogger::new(LevelFilter::Trace, Config::default(), TerminalMode::Mixed, ColorChoice::Auto)
-            ]
-        ).unwrap();
-
-        let rom_file: File = File::open("roms/bully.gb").expect("Failed opening rom file");
-
-        let rom_content: Vec<u8> = rom_file.bytes().map(|value| {
-            value.expect("Failed reading rom file")
-        }).collect();
-
-        let rom: Rom = Rom::create_from_bytes(rom_content);
-        assert_eq!(rom.title, "BULLYGB");
-
-        let mut ram_memory = RamMemory::init_from_rom(&rom);
-        let mut cpu: CPU = CPU::init_from_rom(&rom, &mut ram_memory);
-
-        let mut instruction_counter: usize = 0x00;
-
-        loop {
-            trace!("Running instruction 0x{:08X}", instruction_counter);
-            cpu.execute_instruction();
-            instruction_counter += 1;
-        }
-    }
-
 
 }
