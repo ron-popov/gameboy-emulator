@@ -2,6 +2,8 @@
 extern crate simplelog;
 
 use std::sync::Arc;
+use std::rc::Rc;
+use std::cell::RefCell;
 use std::{io::Read};
 use std::fs::File;
 use std::mem::forget;
@@ -68,17 +70,17 @@ fn main() {
     info!("Loading rom \"{}\"", rom.title);
 
     let orig_ram_memory = RamMemory::init_from_rom(&rom);
-    let mut ram_memory_arc: Arc<RamMemory> = Arc::new(orig_ram_memory);
+    let mut ram_memory_arc: Rc<RefCell<RamMemory>> = Rc::new(RefCell::new(orig_ram_memory));
 
     
     let orig_ppu: PPU = PPU::init();
-    let mut ppu_arc: Arc<PPU> = Arc::new(orig_ppu);
+    let mut ppu_arc: Rc<RefCell<PPU>> = Rc::new(RefCell::new(orig_ppu));
     
     let mut cpu: CPU = CPU::init_from_rom(ram_memory_arc.clone(), ppu_arc.clone());
     
     // Init boot rom
     if args.get_flag("boot_rom") {
-        let ram_memory = Arc::get_mut(&mut ram_memory_arc).expect("Failed getting mut ram_memory for writing boot rom");
+        let mut ram_memory = ram_memory_arc.borrow_mut();
         for (i,x) in DMG_BOOT_ROM.iter().enumerate() {
             ram_memory.set_addr(i as u16, *x);
         }
@@ -87,15 +89,15 @@ fn main() {
 
     loop {
         // Only run boot rom for now
-        // if cpu.get_program_counter() == 0x0100 {
-            // panic!("No more boot rom");
-        // }
+        if cpu.get_program_counter() == 0x0100 {
+            panic!("No more boot rom");
+        }
 
         // Execute a single cpu instruction
-        // cpu.execute_instruction();
+        cpu.execute_instruction();
 
         // Render screen (if needed)
-        let ppu: &mut PPU = Arc::get_mut(&mut ppu_arc).expect("Failed getting mut ppu for rendering screen");
+        let ppu: &mut PPU = &mut ppu_arc.borrow_mut();
         ppu.render();
     }
 }

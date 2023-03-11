@@ -6,6 +6,8 @@ use crate::param::{Param, MemValue};
 
 use serde_json::Value;
 use std::sync::Arc;
+use std::rc::Rc;
+use std::cell::RefCell;
 
 pub fn get_opcodes() -> Value {
     serde_json::from_str(OPCODES_JSON).expect("Failed parsing opcodes json data")
@@ -13,8 +15,8 @@ pub fn get_opcodes() -> Value {
 
 #[readonly::make]
 pub struct CPU {
-    ram_memory: Arc<RamMemory>,
-    ppu: Arc<PPU>,
+    ram_memory: Rc<RefCell<RamMemory>>,
+    ppu: Rc<RefCell<PPU>>,
     a_reg: u8,
     b_reg: u8,
     c_reg: u8,
@@ -29,7 +31,7 @@ pub struct CPU {
 }
 
 impl CPU {
-    pub fn init_from_rom(ram_memory: Arc<RamMemory>, ppu: Arc<PPU>) -> CPU {
+    pub fn init_from_rom(ram_memory: Rc<RefCell<RamMemory>>, ppu: Rc<RefCell<PPU>>) -> CPU {
         let opcodes = get_opcodes();
 
         CPU {
@@ -336,7 +338,7 @@ impl CPU {
     // Memory stuff
     fn get_addr(&self, addr: u16) -> u8 {
         if addr < RAM_SIZE as u16 {
-            return self.ram_memory.get_addr(addr);
+            return self.ram_memory.borrow_mut().get_addr(addr);
         } else {
             return 0xFF;
             // todo!("Request addr not in memory (0x{:04X})", addr);
@@ -400,7 +402,7 @@ impl CPU {
     }
 
     fn set_addr(&mut self, addr: u16, value: u8) {
-        let ram_memory_borrow = Arc::get_mut(&mut self.ram_memory).expect("Failed getting mut ram_memory for writing");
+        let mut ram_memory_borrow = self.ram_memory.borrow_mut();
         ram_memory_borrow.set_addr(addr, value);
     }
 
