@@ -16,6 +16,7 @@ pub fn get_opcodes() -> Value {
 pub struct CPU {
     ram_memory_ref: Rc<RefCell<RamMemory>>,
     ppu_ref: Rc<RefCell<PPU>>,
+    internal_ram_memory: Vec<u8>,
     a_reg: u8,
     b_reg: u8,
     c_reg: u8,
@@ -36,6 +37,7 @@ impl CPU {
         CPU {
             ram_memory_ref: ram_memory_ref,
             ppu_ref: ppu_ref,
+            internal_ram_memory: vec![0; INTERNAL_RAM_MEMORY_SIZE as usize],
             a_reg: 0,
             b_reg: 0,
             c_reg: 0,
@@ -336,11 +338,20 @@ impl CPU {
 
     // Memory stuff
     fn get_addr(&self, addr: u16) -> u8 {
-        if addr < RAM_SIZE as u16 {
+        if addr < RAM_SIZE as u16 { // 0x0000 -> 0x8000
             return self.ram_memory_ref.borrow_mut().get_addr(addr);
-        } else {
-            return 0xFF;
-            // todo!("Request addr not in memory (0x{:04X})", addr);
+        } else if (addr >= RAM_SIZE as u16 && addr < RAM_IO_PORTS_RANGE_START) { // 0x8000 -> 0xFF00
+            unimplemented!("Requested unimplemented memory addr (0x{:04X})", addr);
+        } else if (addr >= RAM_IO_PORTS_RANGE_START && addr < RAM_EMPTY_RANGE_START) {
+            return self.ppu_ref.borrow().get_addr(addr);
+        } else if (addr >= RAM_EMPTY_RANGE_START && addr < RAM_INTERNAL_RANGE_START) {
+            panic!("Requested addr at a memory addr that should not be used (0x{:04X})", addr);
+        } else if (addr >= RAM_INTERNAL_RANGE_START) {
+            let internal_memory_addr = addr - RAM_INTERNAL_RANGE_START;
+            return self.internal_ram_memory[internal_memory_addr as usize];
+        } else { // DAFUK
+            // return 0xFF;
+            panic!("Dafuk? (0x{:04X})", addr);
         }
     }
 
@@ -401,7 +412,21 @@ impl CPU {
     }
 
     fn set_addr(&mut self, addr: u16, value: u8) {
-        self.ram_memory_ref.borrow_mut().set_addr(addr, value);
+        if addr < RAM_SIZE as u16 { // 0x0000 -> 0x8000
+            self.ram_memory_ref.borrow_mut().set_addr(addr, value);
+        } else if (addr >= RAM_SIZE as u16 && addr < RAM_IO_PORTS_RANGE_START) { // 0x8000 -> 0xFF00
+            unimplemented!("Requested write to unimplemented memory addr (0x{:04X})", addr);
+        } else if (addr >= RAM_IO_PORTS_RANGE_START && addr < RAM_EMPTY_RANGE_START) {
+            return self.ppu_ref.borrow_mut().set_addr(addr, value);
+        } else if (addr >= RAM_EMPTY_RANGE_START && addr < RAM_INTERNAL_RANGE_START) {
+            panic!("Requested write to addr at a memory addr that should not be used (0x{:04X})", addr);
+        } else if (addr >= RAM_INTERNAL_RANGE_START) {
+            let internal_memory_addr = addr - RAM_INTERNAL_RANGE_START;
+            self.internal_ram_memory[internal_memory_addr as usize] = value;
+        } else { // DAFUK
+            // return 0xFF;
+            panic!("Dafuk? (0x{:04X})", addr);
+        }
     }
 
     pub fn get_program_counter(&self) -> u16 {
