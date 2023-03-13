@@ -301,8 +301,49 @@ impl CPU {
                 set_half_carry_flag = Some(false);
             },
             "BIT" => {
-                
-            }
+                assert_eq!(params.len(), 2, "Invalid param count to BIT");
+
+                let bit_index = params.get(0).unwrap().get_name().parse::<u8>().unwrap();
+                let reg_name: String = params.get(1).unwrap().get_name();
+                let reg_value;
+
+                set_sub_flag = Some(false);
+                set_half_carry_flag = Some(true);
+
+
+                match reg_name.len() {
+                    1 => {
+                        reg_value = self.get_register(reg_name) ;
+                    },
+                    2 => {
+                        assert_eq!(params.get(1).unwrap().is_immediate(), false);
+                        reg_value = self.get_addr(self.get_double_register(&reg_name));
+                    },
+                    _ => {
+                        panic!("Tried running BIT on invalid register")
+                    }
+                };
+
+                set_zero_flag = Some(((reg_value >> bit_index) % 2) == 0);
+            },
+            "RST" => {
+                assert_eq!(params.len(), 1, "Invalid param count to RST");
+
+                self.stack_push_double(self.pc_reg);
+
+                let new_addr_str = params.get(0).unwrap().get_name().replace("H", "");
+                let new_addr_parse_result = u16::from_str_radix(new_addr_str.as_str(),16);
+                match new_addr_parse_result {
+                    Ok(new_addr) => {
+                        self.pc_reg = new_addr;
+                    },
+                    Err(e) => {
+                        panic!("Failed getting RST addr to jump ({})", e);
+                    }
+                }
+
+                should_inc_pc = false;
+            },
             _ => {
                 unimplemented!("Opcode name ({})", opcode_data["mnemonic"]);
             }
@@ -313,9 +354,6 @@ impl CPU {
             self.pc_reg += opcode_data["bytes"].as_u64().unwrap() as u16;
         }
 
-        //TODO : Check if this instruction should change flag before changing it
-
-        
         self.verify_flag(opcode_data["flags"]["Z"].as_str().unwrap(), set_zero_flag, "Zero");
         match set_zero_flag {
             Some(value) => {
@@ -349,26 +387,8 @@ impl CPU {
         }
 
     }
-
-    // Memory stuff
-    fn get_addr(&self, addr: u16) -> u8 {
-        if addr < RAM_SIZE as u16 { // 0x0000 -> 0x8000
-            return self.ram_memory_ref.borrow_mut().get_addr(addr);
-        } else if (addr >= RAM_SIZE as u16 && addr < RAM_IO_PORTS_RANGE_START) { // 0x8000 -> 0xFF00
-            unimplemented!("Requested unimplemented memory addr (0x{:04X})", addr);
-        } else if (addr >= RAM_IO_PORTS_RANGE_START && addr < RAM_EMPTY_RANGE_START) {
-            return self.ppu_ref.borrow().get_addr(addr);
-        } else if (addr >= RAM_EMPTY_RANGE_START && addr < RAM_INTERNAL_RANGE_START) {
-            panic!("Requested addr at a memory addr that should not be used (0x{:04X})", addr);
-        } else if (addr >= RAM_INTERNAL_RANGE_START) {
-            let internal_memory_addr = addr - RAM_INTERNAL_RANGE_START;
-            return self.internal_ram_memory[internal_memory_addr as usize];
-        } else { // DAFUK
-            // return 0xFF;
-            panic!("Dafuk? (0x{:04X})", addr);
-        }
-    }
-
+    
+    // Register stuff
     pub fn get_register(&self, reg: String) -> u8 {
         match reg.to_lowercase().as_str() {
             "a" => self.a_reg,
@@ -398,6 +418,10 @@ impl CPU {
     }
 
     fn get_double_register(&self, reg: &String) -> u16 {
+        if reg.to_uppercase() == "SP" {
+            return self.pc_reg;
+        }
+
         let first_reg: String = reg[0..1].to_string();
         let second_reg: String = reg[1..2].to_string();
 
@@ -422,6 +446,52 @@ impl CPU {
                 self.set_register(first_reg, msb);
                 self.set_register(second_reg, lsb);
             }
+        }
+    }
+
+    // Stack stuff
+    fn stack_push(&mut self, value: u8) {
+         self.sp_reg -= 1;
+         self.set_addr(self.sp_reg, value);
+    }
+
+    fn stack_pop(&mut self) -> u8 {
+        let ret_value = self.get_addr(self.sp_reg);
+        self.sp_reg += 1;
+        return ret_value;
+    }
+
+    fn stack_push_double(&mut self, value: u16) {
+        let lsb = (value & 0xff) as u8;
+        let msb = (value >> 8) as u8;
+        
+        self.stack_push(msb);
+        self.stack_push(lsb);
+    }
+
+    fn stack_pop_double(&mut self) -> u16 {
+        let lsb = self.stack_pop() as u16;
+        let msb = self.stack_pop() as u16;
+    
+        return lsb + (msb << 8);
+    }
+
+    // Memory stuff
+    fn get_addr(&self, addr: u16) -> u8 {
+        if addr < RAM_SIZE as u16 { // 0x0000 -> 0x8000
+            return self.ram_memory_ref.borrow_mut().get_addr(addr);
+        } else if (addr >= RAM_SIZE as u16 && addr < RAM_IO_PORTS_RANGE_START) { // 0x8000 -> 0xFF00
+            unimplemented!("Requested unimplemented memory addr (0x{:04X})", addr);
+        } else if (addr >= RAM_IO_PORTS_RANGE_START && addr < RAM_EMPTY_RANGE_START) {
+            return self.ppu_ref.borrow().get_addr(addr);
+        } else if (addr >= RAM_EMPTY_RANGE_START && addr < RAM_INTERNAL_RANGE_START) {
+            panic!("Requested addr at a memory addr that should not be used (0x{:04X})", addr);
+        } else if (addr >= RAM_INTERNAL_RANGE_START) {
+            let internal_memory_addr = addr - RAM_INTERNAL_RANGE_START;
+            return self.internal_ram_memory[internal_memory_addr as usize];
+        } else { // DAFUK
+            // return 0xFF;
+            panic!("Dafuk? (0x{:04X})", addr);
         }
     }
 
