@@ -79,6 +79,7 @@ impl CPU {
         
         // Parsing
         let opcode_name: &str = opcode_data["mnemonic"].as_str().unwrap();
+        trace!("{}", opcode_data);
         let params: Vec<Param> = self.get_params(&opcode_data);
 
         // Prints
@@ -91,7 +92,6 @@ impl CPU {
             }
         }
         debug!("0x{:04X} -> {} {}", self.pc_reg, opcode_name, param_data);
-        trace!("{}", opcode_data);
 
         match opcode_name {
             "NOP" => { // NOTHING
@@ -186,12 +186,25 @@ impl CPU {
                                     },
                                     2 => {
                                         let mut chars = reg_name.chars();
-                                        let reg_value = (self.get_register(chars.next().unwrap().to_string()) as u16) << 8 + 
-                                            self.get_register(chars.next().unwrap().to_string()) as u16;
+                                        let reg_name = chars.next().unwrap().to_string() + &chars.next().unwrap().to_string();
+                                        let reg_value = self.get_double_register(&reg_name);
                                         if read_param.is_immediate() {
                                             write_value = MemValue::Double(reg_value);
                                         } else {
                                             write_value = MemValue::Byte(self.get_addr(reg_value));
+                                        }
+
+                                        // Implement LDD and LDI
+                                        if read_param.is_decrement() {
+                                            self.set_double_register(
+                                                &reg_name,
+                                                reg_value - 1);
+                                        } else if read_param.is_increment() {
+                                            if read_param.is_decrement() {
+                                            self.set_double_register(
+                                                &reg_name,
+                                                reg_value + 1);
+                                            }
                                         }
                                         
                                     },
@@ -218,15 +231,13 @@ impl CPU {
                                     2 => {
                                         match write_value {
                                             MemValue::Double(value) => {
-                                                self.set_double_register(reg_name, value)
+                                                self.set_double_register(&reg_name, value)
                                             },
                                             MemValue::Byte(value) => {
                                                 assert_eq!(target_param.is_immediate(), false);
-                                                let target_addr: u16 = self.get_double_register(reg_name);
+                                                let target_addr: u16 = self.get_double_register(&reg_name);
 
                                                 self.set_addr(target_addr, value);
-                                                todo!("WIP");
-                                                // if target_param.
                                             }
                                             _ => panic!("Invalid type to load to a double register ({:?})", write_value)
                                         }
@@ -288,6 +299,9 @@ impl CPU {
                 set_carry_flag = Some(false);
                 set_sub_flag = Some(false);
                 set_half_carry_flag = Some(false);
+            },
+            "BIT" => {
+                
             }
             _ => {
                 unimplemented!("Opcode name ({})", opcode_data["mnemonic"]);
@@ -383,7 +397,7 @@ impl CPU {
         }
     }
 
-    fn get_double_register(&self, reg: String) -> u16 {
+    fn get_double_register(&self, reg: &String) -> u16 {
         let first_reg: String = reg[0..1].to_string();
         let second_reg: String = reg[1..2].to_string();
 
@@ -393,7 +407,7 @@ impl CPU {
         return value;
     }
 
-    fn set_double_register(&mut self, reg: String, value: u16) {
+    fn set_double_register(&mut self, reg: &String, value: u16) {
         assert_eq!(reg.len(), 2, "Double register name is not of len 2");
 
         match reg.to_uppercase().as_str() {
@@ -465,12 +479,12 @@ impl CPU {
                     MemValue::Byte(self.get_addr(self.pc_reg + 1))
                 },
                 _ => {
-                    let chars = param.get_name().clone();
-                    for c in chars.chars() {
-                        if !c.is_alphabetic() {
-                            panic!("Invalid char ({})", c)
-                        }
-                    }
+                    // let chars = param.get_name().clone();
+                    // for c in chars.chars() {
+                    //     if !c.is_alphabetic() {
+                    //         panic!("Invalid char ({})", c)
+                    //     }
+                    // }
 
                     MemValue::Name(param.get_name())
                 }                

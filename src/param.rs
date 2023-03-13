@@ -40,6 +40,28 @@ impl Param {
 
     }
     
+    pub fn is_decrement(&self) -> bool {
+        match self.json_value["decrement"].as_bool() {
+            Some(value) => {
+                value
+            },
+            None => {
+                false
+            }
+        }
+    }
+
+    pub fn is_increment(&self) -> bool {
+        match self.json_value["increment"].as_bool() {
+            Some(value) => {
+                value
+            },
+            None => {
+                false
+            }
+        }
+    }
+
     pub fn set_param_value(&mut self, value: MemValue) {
         self.value = value;
     } 
