@@ -77,7 +77,10 @@ impl CPU {
         
         // Parsing
         let opcode_name: &str = opcode_data["mnemonic"].as_str().unwrap();
-        trace!("{}", opcode_data);
+        for s in Self::pretty_opcode_data(&opcode_data) {
+            trace!("{}", s);
+        }
+        // trace!("{}", opcode_data);
         let params: Vec<Param> = self.get_params(&opcode_data);
 
         // Prints
@@ -266,10 +269,12 @@ impl CPU {
                 }
             },
             "LDH" => { // LOAD
+                unimplemented!("LDH: I think it is broken?");
                 assert_eq!(params.len(), 2, "Invalid param count to LDH");
 
                 let to_param = params.get(0).unwrap();
                 let from_param = params.get(1).unwrap();
+
 
                 let from_value: u8;
                 match from_param.get_value() {
@@ -820,7 +825,7 @@ impl CPU {
     }
 
     fn verify_flag(&self, doc: &str, value: Option<bool>, name: &str) {
-        trace!("Checking Flag {}, with doc \"{}\" and value \"{:?}\"", name, doc, value);
+        // trace!("Checking Flag {}, with doc \"{}\" and value \"{:?}\"", name, doc, value);
         if doc == "-" { assert!(value == Option::None, "{} Flag should be empty", name);}
         if doc != "-" { assert!(value != Option::None, "{} Flag cannot be empty", name); }
         if doc == "1" { assert!(value == Option::Some(true), "{} Flag has to be true", name); }
@@ -869,6 +874,82 @@ impl CPU {
 
     fn lsb(value: u16) -> u8 {
         (value & 0xff) as u8
+    }
+
+    fn pretty_opcode_data(opcode_data: &Value) -> Vec<String> {
+        let mut opcode_string: Vec<String> = vec![];
+
+        // Opcode name and length
+        opcode_string.push(format!("{}: {} bytes", 
+            opcode_data["mnemonic"].as_str().unwrap(),
+            opcode_data["bytes"].as_u64().unwrap()
+        ));
+
+        // Flag
+        for flag in vec!["C", "H", "N", "Z"] {
+            let flag_name = match flag {
+                "C" => "Carry",
+                "H" => "Half-Carry",
+                "N" => "Negative",
+                "Z" => "Zero",
+                _ => panic!("Unknown flag ({})", flag)
+            };
+
+            let flag_status = opcode_data["flags"][flag].as_str().unwrap();
+            let flag_status_pretty = match flag_status {
+                "-" => "Unaffected",
+                "0" => "Turned On",
+                "1" => "Turned Off",
+                _ => "By Value"
+            };
+
+            opcode_string.push(
+                format!("    {} -> {}",
+                flag_name.to_string(),
+                flag_status_pretty
+            ))            
+        }
+        // for param in opcode_data["flags"].as_array().unwrap() {
+            // opcode_string.push(
+            //     format!("    {}",
+            //     param.as_str().unwrap().to_string()
+            // ))
+        // }
+
+
+        // Params
+        // opcode_string.push("-- PARAMS --".to_string());
+        // for (i, param) in opcode_data["operands"].as_array().unwrap().iter().enumerate() {
+        //     let mut param_string = format!("    Param #{} -> {}",
+        //         i,
+        //         param["name"].as_str().unwrap());
+
+        //     let mut options: Vec<String> = vec![];
+
+        //     let immediate = param["immediate"].as_bool();
+        //     if immediate.is_some() && immediate.unwrap() {
+        //         options.push("immediate".to_string());
+        //     }
+
+        //     let decrement = param["decrement"].as_bool();
+        //     if decrement.is_some() && decrement.unwrap() {
+        //         options.push("decrement".to_string());
+        //     }
+
+        //     let increment = param["increment"].as_bool();
+        //     if increment.is_some() && increment.unwrap() {
+        //         options.push("increment".to_string());
+        //     }
+
+        //     if options.len() != 0 {
+        //         param_string += " ";
+        //         param_string += &options.join(", ");
+        //     }
+
+        //     opcode_string.push(param_string);
+        // }
+
+        return opcode_string;
     }
 
 }
