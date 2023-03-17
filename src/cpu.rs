@@ -76,20 +76,24 @@ impl CPU {
         }
         
         // Parsing
-        let opcode_name: &str = opcode_data["mnemonic"].as_str().unwrap();
-        for s in Self::pretty_opcode_data(&opcode_data) {
-            trace!("{}", s);
-        }
-        // trace!("{}", opcode_data);
+        
         let params: Vec<Param> = self.get_params(&opcode_data);
-
-        // Prints
+        
+        // Debug Prints
+        let opcode_name: &str = opcode_data["mnemonic"].as_str().unwrap();
         let mut param_data: String = "".to_string();
         for param in &params {
             param_data += &param.get_printable();
             param_data += ", ";
         }
+        trace!("");
+        trace!("");
         debug!("0x{:04X} -> {} {}", self.pc_reg, opcode_name, param_data);
+
+        // Trace Prints
+        for s in Self::pretty_opcode_data(&opcode_data) {
+            trace!("{}", s);
+        }
 
         match opcode_name {
             "NOP" => { // NOTHING
