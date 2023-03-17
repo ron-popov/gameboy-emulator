@@ -448,7 +448,8 @@ impl CPU {
                 match params.len() {
                     1 => {
                         let target_addr = param.get_double();
-                        self.stack_push_double(self.pc_reg);
+                        self.stack_push_double(
+                            self.pc_reg + opcode_data["bytes"].as_u64().unwrap() as u16);
 
                         self.pc_reg = target_addr;
                         should_inc_pc = false;
@@ -509,8 +510,8 @@ impl CPU {
             "RLA" => { // Rotate left A register through the carry flag
                 assert_eq!(params.len(), 0);
 
-                let old_value = self.get_register(&"A".to_string());
-                
+                let old_value = self.a_reg;
+
                 set_carry_flag = Some((old_value & 0b10000000) == 0b10000000);
                 set_half_carry_flag = Some(false);
                 set_sub_flag = Some(false);
@@ -521,8 +522,21 @@ impl CPU {
                 }
 
                 set_zero_flag = Some(new_value == 0);
-                self.set_register(&"A".to_string(), new_value);
+                self.a_reg = new_value;
             },
+            "RET" => { // Return, maybe conditional
+                match params.len() {
+                    0 => { // Just return
+                        let addr = self.stack_pop_double();
+                        self.pc_reg = addr;
+                        should_inc_pc = false;
+                    },
+                    1 => { // Conditional return
+                        unimplemented!("RET: Conditional return")
+                    },
+                    _ => panic!("RET: Inavlid param count")
+                }
+            }
             _ => {
                 unimplemented!("Opcode name ({})", opcode_data["mnemonic"]);
             }
@@ -530,7 +544,10 @@ impl CPU {
         }
 
         if should_inc_pc {
+            trace!("Increasing PC");
             self.pc_reg += opcode_data["bytes"].as_u64().unwrap() as u16;
+        } else {
+            trace!("NOT Increasing PC");
         }
 
         self.verify_flag(opcode_data["flags"]["Z"].as_str().unwrap(), set_zero_flag, "Zero");
