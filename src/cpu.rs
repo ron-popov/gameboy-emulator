@@ -44,7 +44,7 @@ impl CPU {
             f_reg: 0,
             h_reg: 0,
             l_reg: 0,
-            pc_reg: 0x0000,
+            pc_reg: 0x000C,
             sp_reg: 0xFFFE,
             opcodes: opcodes
         }
@@ -83,11 +83,8 @@ impl CPU {
         // Prints
         let mut param_data: String = "".to_string();
         for param in &params {
-            if !param.is_immediate() {
-                param_data += format!("({}) ", param.get_name()).as_str();
-            } else {
-                param_data += format!("{} ", param.get_name()).as_str();
-            }
+            param_data += &param.get_printable();
+            param_data += ", ";
         }
         debug!("0x{:04X} -> {} {}", self.pc_reg, opcode_name, param_data);
 
@@ -106,11 +103,11 @@ impl CPU {
                     should_inc_pc = false;
                     self.pc_reg = target_addr;
                 } else {
-                    panic!("Invalid param count for JP")
+                    panic!("JP: Invalid param count")
                 }
             },
             "CP" => { // COMPARE
-                assert_eq!(params.len(), 1, "Invalid params count for CP");
+                assert_eq!(params.len(), 1, "CP: Invalid params count");
 
                 set_sub_flag = Some(true);
 
@@ -149,18 +146,18 @@ impl CPU {
                 if params.len() == 1 {
                     let jump_addr_param = params.get(0).unwrap();
                     self.pc_reg = self.pc_reg.wrapping_add_signed(jump_addr_param.get_signed_byte() as i16);
-                    should_inc_pc = false;
+                    // should_inc_pc = false;
                 } else if params.len() == 2 {
                     let condition_param = params.get(0).unwrap();
 
                     if self.get_condition_value(condition_param.get_name()) {
                         let jump_addr_param = params.get(1).unwrap();
                         self.pc_reg = self.pc_reg.wrapping_add_signed(jump_addr_param.get_signed_byte() as i16);
-                        should_inc_pc = false;
+                        // should_inc_pc = false;
                     }
 
                 } else {
-                    panic!("Invalid param count for JR")
+                    panic!("JR: Invalid param count")
                 }
             },
             "LD" => { // LOAD
@@ -192,19 +189,6 @@ impl CPU {
                                             write_value = MemValue::Byte(self.get_addr(reg_value));
                                         }
 
-                                        // Implement LDD and LDI
-                                        if read_param.is_decrement() {
-                                            self.set_double_register(
-                                                &reg_name,
-                                                reg_value - 1);
-                                        } else if read_param.is_increment() {
-                                            if read_param.is_decrement() {
-                                            self.set_double_register(
-                                                &reg_name,
-                                                reg_value + 1);
-                                            }
-                                        }
-                                        
                                     },
                                     _ => panic!("Invalid register name length")
                                 }
@@ -239,8 +223,23 @@ impl CPU {
                                             }
                                             _ => panic!("Invalid type to load to a double register ({:?})", write_value)
                                         }
-                                    },
+                                    }
                                     _ => panic!("Invalid register name length")
+                                }
+
+                                // For LDI and LDD (or LD (HL-) and LD (HL+))
+                                if target_param.is_decrement() {
+                                    // debug!("BEFORE HL: 0x{:04X}", self.get_double_register(&"HL".to_string()));
+                                    self.set_double_register(
+                                        &reg_name,
+                                        self.get_double_register(&reg_name) - 1);
+                                    // debug!("AFTER  HL: 0x{:04X}", self.get_double_register(&"HL".to_string()));
+                                } else if target_param.is_increment() {
+                                    if read_param.is_decrement() {
+                                    self.set_double_register(
+                                        &reg_name,
+                                        self.get_double_register(&reg_name) + 1);
+                                    }
                                 }
                             },
                             MemValue::Double(addr) => {
@@ -303,7 +302,7 @@ impl CPU {
                         assert_eq!(from_param.is_immediate(), true, "Tried running XOR with Double immediate value???");
                         xor_value = self.get_addr(addr)
                     }
-                    _ => panic!("Unknown type to run XOR with ({:?})", from_param.get_value())
+                    _ => panic!("XOR: Unknown type ({:?})", from_param.get_value())
                 };
 
                 self.a_reg = self.a_reg ^ xor_value;
@@ -314,7 +313,7 @@ impl CPU {
                 set_half_carry_flag = Some(false);
             },
             "BIT" => { // Check if certain bit in byte is set
-                assert_eq!(params.len(), 2, "Invalid param count to BIT");
+                assert_eq!(params.len(), 2, "BIT: Invalid param count");
 
                 let bit_index = params.get(0).unwrap().get_name().parse::<u8>().unwrap();
                 let reg_name: String = params.get(1).unwrap().get_name();
@@ -333,14 +332,14 @@ impl CPU {
                         reg_value = self.get_addr(self.get_double_register(&reg_name));
                     },
                     _ => {
-                        panic!("Tried running BIT on invalid register")
+                        panic!("BIT: Tried running operation on invalid register")
                     }
                 };
 
                 set_zero_flag = Some(((reg_value >> bit_index) % 2) == 0);
             },
             "RST" => { // Push PC to stack and jump to one of hardcoded values
-                assert_eq!(params.len(), 1, "Invalid param count to RST");
+                assert_eq!(params.len(), 1, "RST: Invalid param count");
 
                 self.stack_push_double(self.pc_reg);
 
@@ -351,14 +350,14 @@ impl CPU {
                         self.pc_reg = new_addr;
                     },
                     Err(e) => {
-                        panic!("Failed getting RST addr to jump ({})", e);
+                        panic!("RST: Failed getting addr to jump ({})", e);
                     }
                 }
 
                 should_inc_pc = false;
             },
             "INC" => { // Increment value
-                assert_eq!(params.len(), 1, "Invalid param count to INC");
+                assert_eq!(params.len(), 1, "INC: Invalid param count");
                 let param = params.get(0).unwrap();
                 let reg_name = param.get_name();
 
@@ -383,7 +382,7 @@ impl CPU {
 
                             self.set_double_register(&reg_name, new_value);
                         },
-                        _ => panic!("Invalid reg_name to INC")
+                        _ => panic!("INC: Invalid reg_name")
                     }
                 } else {
                     match reg_name.len() {
@@ -396,12 +395,12 @@ impl CPU {
 
                             self.set_double_register(&reg_name, new_value);
                         },
-                        _ => panic!("Invalid reg_name to INC")
+                        _ => panic!("INC: Invalid reg_name")
                     }
                 }
             },
             "DEC" => { // Decrement value
-                assert_eq!(params.len(), 1, "Invalid param count to DEC");
+                assert_eq!(params.len(), 1, "DEC: Invalid param count");
                 let param = params.get(0).unwrap();
                 let reg_name = param.get_name();
 
@@ -426,7 +425,7 @@ impl CPU {
 
                             self.set_double_register(&reg_name, new_value);
                         },
-                        _ => panic!("Invalid reg_name to DEC")
+                        _ => panic!("DEC: Invalid reg_name")
                     }
                 } else {
                     match reg_name.len() {
@@ -439,8 +438,32 @@ impl CPU {
 
                             self.set_double_register(&reg_name, new_value);
                         },
-                        _ => panic!("Invalid reg_name to DEC")
+                        _ => panic!("DEC: Invalid reg_name")
                     }
+                }
+            },
+            "CALL" => { // JUMP to addr and push current pc to stack
+                let param = params.get(0).unwrap();
+
+                match params.len() {
+                    1 => {
+                        let target_addr = param.get_double();
+                        self.stack_push_double(self.pc_reg);
+
+                        self.pc_reg = target_addr;
+                        should_inc_pc = false;
+                    },
+                    2 => {
+                        unimplemented!("CALL: Conditional")
+                    },
+                    _ => panic!("CALL: Invalid param count")
+                }
+
+                match param.get_value() {
+                    MemValue::Double(addr) => {
+
+                    },
+                    _ => panic!("CALL: Invalid param type")
                 }
             }
             _ => {
@@ -524,8 +547,8 @@ impl CPU {
         let first_reg: String = reg[0..1].to_string();
         let second_reg: String = reg[1..2].to_string();
 
-        let mut value: u16 = self.get_register(&first_reg) as u16;
-        value += (self.get_register(&second_reg) as u16) << 8;
+        let mut value: u16 = (self.get_register(&first_reg) as u16) << 8; // msb
+        value += self.get_register(&second_reg) as u16; // lsb
 
         return value;
     }

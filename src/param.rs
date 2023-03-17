@@ -74,6 +74,40 @@ impl Param {
         self.value.clone()
     }
 
+    pub fn get_printable(&self) -> String {
+        let mut param_text = match &self.value {
+            MemValue::Byte(value) => {
+                format!("0x{:02X}", value)
+            },
+            MemValue::SignedByte(value) => {
+                //TODO : Make this really signed (currently show 0xFB and not negative something)
+                format!("0x{:02X}", value)
+            },
+            MemValue::Double(value) => {
+                format!("0x{:04X}", value)
+            },
+            MemValue::Name(value) => {
+                format!("{}", value)
+            },
+            MemValue::Bool(value) => {
+                format!("{}", if *value {"True"} else {"False"})
+            },
+            _ => panic!("Failed getting printable string for this param")
+        };
+
+        // let mut param_data: String;
+        if !self.is_immediate() {
+            if self.is_decrement() {
+                param_text = param_text + "-";
+            } else if self.is_increment() {
+                param_text = param_text + "+";
+            }
+            param_text = format!("({})", param_text);
+        }
+
+        return param_text;        
+    }
+
     pub fn is_immediate(&self) -> bool {
         self.json_value["immediate"] != Value::Null && self.json_value["immediate"].as_bool().unwrap()
     }
