@@ -49,7 +49,8 @@ pub const CARTRIDGE_RAM_SIZE_32KB: u8 = 0x03;
 pub const CARTRIDGE_RAM_SIZE_128KB: u8 = 0x04;
 pub const CARTRIDGE_RAM_SIZE_64KB: u8 = 0x05;
 
-pub const RAM_SIZE: usize = 32 * 1024;
+pub const RAM_SIZE: usize = 0xFFFF;
+pub const CARTRIDGE_ROM_SIZE_DEFAULT: usize = 32 * 1024;
 
 // Rom size
 pub const CARTRIDGE_ROM_SIZE_NO_BANKS: u8 = 0x00;

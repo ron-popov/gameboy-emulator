@@ -177,7 +177,7 @@ impl CPU {
                             MemValue::Name(reg_name) => {
                                 match reg_name.len() {
                                     1 => {
-                                        let reg_value = self.get_register(reg_name);
+                                        let reg_value = self.get_register(&reg_name);
                                         if read_param.is_immediate() {
                                             write_value = MemValue::Byte(reg_value);
                                         } else {
@@ -223,7 +223,7 @@ impl CPU {
                                         // TODO: Refactor this shit, maybe with a macro?
                                         match write_value {
                                             MemValue::Byte(value) => {
-                                                self.set_register(reg_name, value)
+                                                self.set_register(&reg_name, value)
                                             },
                                             _ => panic!("Invalid type to load to a single register")
                                         }
@@ -245,6 +245,21 @@ impl CPU {
                                     _ => panic!("Invalid register name length")
                                 }
                             },
+                            MemValue::Double(addr) => {
+                                match write_value {
+                                    MemValue::Byte(value) => {
+                                        self.set_addr(addr, value);
+                                    },
+                                    MemValue::Double(value) => {
+                                        let msb = Self::msb(value);
+                                        let lsb = Self::lsb(value);
+                                        
+                                        self.set_addr(addr, lsb);
+                                        self.set_addr(addr+1, msb);
+                                    }
+                                    _ => panic!("Tried writing non byte value to a memory addr ({:?})", write_value)
+                                }
+                            }
                             _ => panic!("Tried writing to unknown param type ({:?})", target_param)
                         }
                     },
@@ -268,7 +283,7 @@ impl CPU {
                     },
                     MemValue::Name(name) => {
                         assert_eq!(from_param.is_immediate(), true, "LDH from not immediate register");
-                        from_value = self.get_register(name);
+                        from_value = self.get_register(&name);
                     },
                     _ => panic!("LDH from unknown type ({:?})", from_param.get_value())
                 }
@@ -284,7 +299,7 @@ impl CPU {
                         xor_value = value;
                     },
                     MemValue::Name(name) => {
-                        xor_value = self.get_register(name);
+                        xor_value = self.get_register(&name);
                     },
                     MemValue::Double(addr) => {
                         assert_eq!(from_param.is_immediate(), true, "Tried running XOR with Double immediate value???");
@@ -300,7 +315,7 @@ impl CPU {
                 set_sub_flag = Some(false);
                 set_half_carry_flag = Some(false);
             },
-            "BIT" => {
+            "BIT" => { // Check if certain bit in byte is set
                 assert_eq!(params.len(), 2, "Invalid param count to BIT");
 
                 let bit_index = params.get(0).unwrap().get_name().parse::<u8>().unwrap();
@@ -313,7 +328,7 @@ impl CPU {
 
                 match reg_name.len() {
                     1 => {
-                        reg_value = self.get_register(reg_name) ;
+                        reg_value = self.get_register(&reg_name) ;
                     },
                     2 => {
                         assert_eq!(params.get(1).unwrap().is_immediate(), false);
@@ -326,7 +341,7 @@ impl CPU {
 
                 set_zero_flag = Some(((reg_value >> bit_index) % 2) == 0);
             },
-            "RST" => {
+            "RST" => { // Push PC to stack and jump to one of hardcoded values
                 assert_eq!(params.len(), 1, "Invalid param count to RST");
 
                 self.stack_push_double(self.pc_reg);
@@ -344,6 +359,92 @@ impl CPU {
 
                 should_inc_pc = false;
             },
+            "INC" => { // Increment value
+                assert_eq!(params.len(), 1, "Invalid param count to INC");
+                let param = params.get(0).unwrap();
+                let reg_name = param.get_name();
+
+                set_sub_flag = Some(false);
+
+                if param.is_immediate() {
+                    match reg_name.len() {
+                        1 => {
+                            let value = self.get_register(&reg_name);
+                            let new_value = u8::overflowing_add(value, 1).0;
+
+                            set_half_carry_flag = Some(((u8::overflowing_add(value & 0x0f, 1).0) & 0x10) == 0x10);
+                            set_zero_flag = Some(new_value == 0);
+
+                            self.set_register(&reg_name, new_value);
+                        },
+                        2 => {
+                            let value = self.get_double_register(&reg_name);
+                            let new_value = u16::overflowing_add(value, 1).0;
+
+                            set_sub_flag = Option::None;
+
+                            self.set_double_register(&reg_name, new_value);
+                        },
+                        _ => panic!("Invalid reg_name to INC")
+                    }
+                } else {
+                    match reg_name.len() {
+                        2 => {
+                            let value = self.get_double_register(&reg_name);
+                            let new_value = u16::overflowing_add(value, 1).0;
+
+                            set_half_carry_flag = Some(((u16::overflowing_add(value & 0x0f, 1).0) & 0x10) == 0x10);
+                            set_zero_flag = Some(new_value == 0);
+
+                            self.set_double_register(&reg_name, new_value);
+                        },
+                        _ => panic!("Invalid reg_name to INC")
+                    }
+                }
+            },
+            "DEC" => { // Decrement value
+                assert_eq!(params.len(), 1, "Invalid param count to DEC");
+                let param = params.get(0).unwrap();
+                let reg_name = param.get_name();
+
+                set_sub_flag = Some(true);
+
+                if param.is_immediate() {
+                    match reg_name.len() {
+                        1 => {
+                            let value = self.get_register(&reg_name);
+                            let new_value = u8::overflowing_sub(value, 1).0;
+
+                            set_half_carry_flag = Some(((u8::overflowing_sub(value & 0x0f, 1).0) & 0x10) == 0x10);
+                            set_zero_flag = Some(new_value == 0);
+
+                            self.set_register(&reg_name, new_value);
+                        },
+                        2 => {
+                            let value = self.get_double_register(&reg_name);
+                            let new_value = u16::overflowing_sub(value, 1).0;
+
+                            set_sub_flag = Option::None;
+
+                            self.set_double_register(&reg_name, new_value);
+                        },
+                        _ => panic!("Invalid reg_name to DEC")
+                    }
+                } else {
+                    match reg_name.len() {
+                        2 => {
+                            let value = self.get_double_register(&reg_name);
+                            let new_value = u16::overflowing_sub(value, 1).0;
+
+                            set_half_carry_flag = Some(((u16::overflowing_sub(value & 0x0f, 1).0) & 0x10) == 0x10);
+                            set_zero_flag = Some(new_value == 0);
+
+                            self.set_double_register(&reg_name, new_value);
+                        },
+                        _ => panic!("Invalid reg_name to DEC")
+                    }
+                }
+            }
             _ => {
                 unimplemented!("Opcode name ({})", opcode_data["mnemonic"]);
             }
@@ -389,7 +490,7 @@ impl CPU {
     }
     
     // Register stuff
-    pub fn get_register(&self, reg: String) -> u8 {
+    pub fn get_register(&self, reg: &String) -> u8 {
         match reg.to_lowercase().as_str() {
             "a" => self.a_reg,
             "b" => self.b_reg,
@@ -403,7 +504,7 @@ impl CPU {
         }
     }
 
-    fn set_register(&mut self, reg: String, value: u8) {
+    fn set_register(&mut self, reg: &String, value: u8) {
         match reg.to_lowercase().as_str() {
             "a" => self.a_reg = value,
             "b" => self.b_reg = value,
@@ -425,8 +526,8 @@ impl CPU {
         let first_reg: String = reg[0..1].to_string();
         let second_reg: String = reg[1..2].to_string();
 
-        let mut value: u16 = self.get_register(first_reg) as u16;
-        value += (self.get_register(second_reg) as u16) << 8;
+        let mut value: u16 = self.get_register(&first_reg) as u16;
+        value += (self.get_register(&second_reg) as u16) << 8;
 
         return value;
     }
@@ -440,11 +541,11 @@ impl CPU {
                 let first_reg: String = reg[0..1].to_string();
                 let second_reg: String = reg[1..2].to_string();
 
-                let msb: u8 = (value >> 8) as u8;
-                let lsb: u8 = (value & 0xFF) as u8;
+                let msb: u8 = Self::msb(value);
+                let lsb: u8 = Self::lsb(value);
 
-                self.set_register(first_reg, msb);
-                self.set_register(second_reg, lsb);
+                self.set_register(&first_reg, msb);
+                self.set_register(&second_reg, lsb);
             }
         }
     }
@@ -462,8 +563,8 @@ impl CPU {
     }
 
     fn stack_push_double(&mut self, value: u16) {
-        let lsb = (value & 0xff) as u8;
-        let msb = (value >> 8) as u8;
+        let lsb = Self::lsb(value);
+        let msb = Self::msb(value);
         
         self.stack_push(msb);
         self.stack_push(lsb);
@@ -478,9 +579,9 @@ impl CPU {
 
     // Memory stuff
     fn get_addr(&self, addr: u16) -> u8 {
-        if addr < RAM_SIZE as u16 { // 0x0000 -> 0x8000
+        if addr < CARTRIDGE_ROM_SIZE_DEFAULT as u16 { // 0x0000 -> 0x8000
             return self.ram_memory_ref.borrow_mut().get_addr(addr);
-        } else if (addr >= RAM_SIZE as u16 && addr < RAM_IO_PORTS_RANGE_START) { // 0x8000 -> 0xFF00
+        } else if (addr >= CARTRIDGE_ROM_SIZE_DEFAULT as u16 && addr < RAM_IO_PORTS_RANGE_START) { // 0x8000 -> 0xFF00
             unimplemented!("Requested unimplemented memory addr (0x{:04X})", addr);
         } else if (addr >= RAM_IO_PORTS_RANGE_START && addr < RAM_EMPTY_RANGE_START) {
             return self.ppu_ref.borrow().get_addr(addr);
@@ -496,9 +597,9 @@ impl CPU {
     }
 
     fn set_addr(&mut self, addr: u16, value: u8) {
-        if addr < RAM_SIZE as u16 { // 0x0000 -> 0x8000
+        if addr < CARTRIDGE_ROM_SIZE_DEFAULT as u16 { // 0x0000 -> 0x8000
             self.ram_memory_ref.borrow_mut().set_addr(addr, value);
-        } else if (addr >= RAM_SIZE as u16 && addr < RAM_IO_PORTS_RANGE_START) { // 0x8000 -> 0xFF00
+        } else if (addr >= CARTRIDGE_ROM_SIZE_DEFAULT as u16 && addr < RAM_IO_PORTS_RANGE_START) { // 0x8000 -> 0xFF00
             unimplemented!("Requested write to unimplemented memory addr (0x{:04X})", addr);
         } else if (addr >= RAM_IO_PORTS_RANGE_START && addr < RAM_EMPTY_RANGE_START) {
             return self.ppu_ref.borrow_mut().set_addr(addr, value);
@@ -631,6 +732,14 @@ impl CPU {
 
     pub fn get_carry_flag(&self) -> bool {
         self.get_flag(FLAG_CARRY_MASK)
+    }
+
+    fn msb(value: u16) -> u8 {
+        (value >> 8) as u8
+    }
+
+    fn lsb(value: u16) -> u8 {
+        (value & 0xff) as u8
     }
 
 }

@@ -13,7 +13,7 @@ impl RamMemory {
             memory.push(*b);
         }
 
-        while memory.len() < RAM_SIZE {
+        while memory.len() < CARTRIDGE_ROM_SIZE_DEFAULT {
             memory.push(0x00);
         }
 
