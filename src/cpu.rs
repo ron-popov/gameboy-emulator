@@ -458,13 +458,19 @@ impl CPU {
                     },
                     _ => panic!("CALL: Invalid param count")
                 }
+            },
+            "PUSH" => { // Push value to stack
+                assert_eq!(params.len(), 1);
 
-                match param.get_value() {
-                    MemValue::Double(addr) => {
+                let reg_name = params.get(0).unwrap().get_name();
+                self.stack_push_double(self.get_double_register(&reg_name));
+            },
+            "POP" => { // Pop value from the stack to the corresponding register
+                assert_eq!(params.len(), 1);
 
-                    },
-                    _ => panic!("CALL: Invalid param type")
-                }
+                let reg_name = params.get(0).unwrap().get_name();
+                let popped_value = self.stack_pop_double();
+                self.set_double_register(&reg_name, popped_value);
             }
             _ => {
                 unimplemented!("Opcode name ({})", opcode_data["mnemonic"]);
