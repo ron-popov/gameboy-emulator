@@ -4,6 +4,8 @@ pub const SCREEN_HEIGHT: usize = 144;
 pub const GBEMULATOR_ASCII_ART: &str = "\n   _____ ____                       _       _             \n  / ____|  _ \\                     | |     | |            \n | |  __| |_) | ___ _ __ ___  _   _| | __ _| |_ ___  _ __ \n | | |_ |  _ < / _ \\ \'_ ` _ \\| | | | |/ _` | __/ _ \\| \'__|\n | |__| | |_) |  __/ | | | | | |_| | | (_| | || (_) | |   \n  \\_____|____/ \\___|_| |_| |_|\\__,_|_|\\__,_|\\__\\___/|_|   \n                                                          \n                                                          \n";
 
 // RAM STUFF
+pub const RAM_ECHO_RANGE_START: u16 = 0xE000;
+pub const RAM_SPRITE_ATTRIBUTE_TABLE_RANGE_START: u16 = 0xFE00;
 pub const RAM_IO_PORTS_RANGE_START: u16 = 0xFF00;
 pub const RAM_EMPTY_RANGE_START: u16 = 0xFF4C;
 pub const RAM_INTERNAL_RANGE_START: u16 = 0xFF80;
