@@ -471,7 +471,58 @@ impl CPU {
                 let reg_name = params.get(0).unwrap().get_name();
                 let popped_value = self.stack_pop_double();
                 self.set_double_register(&reg_name, popped_value);
-            }
+            },
+            "RL" => { // Rotate left through the carry flag
+                assert_eq!(params.len(), 1);
+                let param = params.get(0).unwrap();
+                let reg_name = param.get_name();
+
+                set_half_carry_flag = Some(false);
+                set_sub_flag = Some(false);
+
+                if param.is_immediate() { // Register
+                    let old_value = self.get_register(&reg_name);
+                    set_carry_flag = Some((old_value & 0b10000000) == 0b10000000);
+
+                    let mut new_value = old_value << 1;
+                    if self.get_carry_flag() {
+                        new_value += 1;
+                    }
+
+                    set_zero_flag = Some(new_value == 0);
+                    self.set_register(&reg_name, new_value);
+                } else { // (HL)
+                    let addr = self.get_double_register(&reg_name);
+                    let old_value = self.get_addr(addr);
+                    set_carry_flag = Some((old_value & 0b10000000) == 0b10000000);
+
+                    let mut new_value = old_value << 1;
+                    if self.get_carry_flag() {
+                        new_value += 1;
+                    }
+
+                    set_zero_flag = Some(new_value == 0);
+                    self.set_addr(addr, new_value);
+                }
+
+            },
+            "RLA" => { // Rotate left A register through the carry flag
+                assert_eq!(params.len(), 0);
+
+                let old_value = self.get_register(&"A".to_string());
+                
+                set_carry_flag = Some((old_value & 0b10000000) == 0b10000000);
+                set_half_carry_flag = Some(false);
+                set_sub_flag = Some(false);
+
+                let mut new_value = old_value << 1;
+                if self.get_carry_flag() {
+                    new_value += 1;
+                }
+
+                set_zero_flag = Some(new_value == 0);
+                self.set_register(&"A".to_string(), new_value);
+            },
             _ => {
                 unimplemented!("Opcode name ({})", opcode_data["mnemonic"]);
             }
