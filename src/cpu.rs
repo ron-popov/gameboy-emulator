@@ -273,7 +273,7 @@ impl CPU {
                 }
             },
             "LDH" => { // LOAD
-                unimplemented!("LDH: I think it is broken?");
+                // unimplemented!("LDH: I think it is broken?");
                 assert_eq!(params.len(), 2, "Invalid param count to LDH");
 
                 let to_param = params.get(0).unwrap();
@@ -283,15 +283,30 @@ impl CPU {
                 let from_value: u8;
                 match from_param.get_value() {
                     MemValue::Byte(value) => {
-                        assert_eq!(from_param.is_immediate(), false, "LDH from immediate byte value");
+                        assert_eq!(from_param.is_immediate(), false, "LDH: from immediate byte value");
                         let from_addr: u16 = 0xFF00 + value as u16;
                         from_value = self.get_addr(from_addr);
                     },
-                    MemValue::Name(name) => {
-                        assert_eq!(from_param.is_immediate(), true, "LDH from not immediate register");
-                        from_value = self.get_register(&name);
+                    MemValue::Name(reg_name) => {
+                        assert_eq!(from_param.is_immediate(), true, "LDH: from not immediate register");
+                        from_value = self.get_register(&reg_name);
                     },
-                    _ => panic!("LDH from unknown type ({:?})", from_param.get_value())
+                    _ => panic!("LDH: from unknown type ({:?})", from_param.get_value())
+                }
+
+                match to_param.get_value() {
+                    MemValue::Byte(value) => {
+                        assert_eq!(to_param.is_immediate(), false, "LDH: to immediate byte value");
+
+                        let to_addr: u16 = 0xFF00 + value as u16;
+                        self.set_addr(to_addr, from_value);
+                    },
+                    MemValue::Name(reg_name) => {
+                        assert_eq!(to_param.is_immediate(), false, "LDH: to not immediate register");
+
+                        self.set_register(&reg_name, from_value);
+                    },
+                    _ => panic!("LDH: to unknown type ({:?})", to_param.get_value())
                 }
             },
             "XOR" => { // XOR
