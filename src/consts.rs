@@ -9,7 +9,6 @@ pub const RAM_SPRITE_ATTRIBUTE_TABLE_RANGE_START: u16 = 0xFE00;
 pub const RAM_IO_PORTS_RANGE_START: u16 = 0xFF00;
 pub const RAM_EMPTY_RANGE_START: u16 = 0xFF4C;
 pub const RAM_INTERNAL_RANGE_START: u16 = 0xFF80;
-pub const INTERNAL_RAM_MEMORY_SIZE: u16 = 0x7F;
 
 pub const DMG_BOOT_ROM: [u8; 0x100] = [
     0x31, 0xfe, 0xff, 0xaf, 0x21, 0xff, 0x9f, 0x32, 0xcb, 0x7c, 0x20, 0xfb,
@@ -45,28 +44,28 @@ pub const FLAG_CARRY_MASK: u8 = 0b00010000;
 
 // External ram size
 pub const CARTRIDGE_RAM_SIZE_NONE: u8 = 0x00;
-pub const CARTRIDGE_RAM_SIZE_2KB: u8 = 0x01;
-pub const CARTRIDGE_RAM_SIZE_8KB: u8 = 0x02;
-pub const CARTRIDGE_RAM_SIZE_32KB: u8 = 0x03;
-pub const CARTRIDGE_RAM_SIZE_128KB: u8 = 0x04;
-pub const CARTRIDGE_RAM_SIZE_64KB: u8 = 0x05;
+// pub const CARTRIDGE_RAM_SIZE_2KB: u8 = 0x01;
+// pub const CARTRIDGE_RAM_SIZE_8KB: u8 = 0x02;
+// pub const CARTRIDGE_RAM_SIZE_32KB: u8 = 0x03;
+// pub const CARTRIDGE_RAM_SIZE_128KB: u8 = 0x04;
+// pub const CARTRIDGE_RAM_SIZE_64KB: u8 = 0x05;
 
 pub const RAM_SIZE: usize = 0xFFFF;
 pub const CARTRIDGE_ROM_SIZE_DEFAULT: usize = 32 * 1024;
 
 // Rom size
 pub const CARTRIDGE_ROM_SIZE_NO_BANKS: u8 = 0x00;
-pub const CARTRIDGE_ROM_SIZE_4_BANKS: u8 = 0x01;
-pub const CARTRIDGE_ROM_SIZE_8_BANKS: u8 = 0x02;
-pub const CARTRIDGE_ROM_SIZE_16_BANKS: u8 = 0x03;
-pub const CARTRIDGE_ROM_SIZE_32_BANKS: u8 = 0x04;
-pub const CARTRIDGE_ROM_SIZE_64_BANKS: u8 = 0x05;
-pub const CARTRIDGE_ROM_SIZE_128_BANKS: u8 = 0x06;
-pub const CARTRIDGE_ROM_SIZE_256_BANKS: u8 = 0x07;
-pub const CARTRIDGE_ROM_SIZE_512_BANKS: u8 = 0x08;
-pub const CARTRIDGE_ROM_SIZE_72_BANKS: u8 = 0x52;
-pub const CARTRIDGE_ROM_SIZE_80_BANKS: u8 = 0x53;
-pub const CARTRIDGE_ROM_SIZE_96_BANKS: u8 = 0x54;
+// pub const CARTRIDGE_ROM_SIZE_4_BANKS: u8 = 0x01;
+// pub const CARTRIDGE_ROM_SIZE_8_BANKS: u8 = 0x02;
+// pub const CARTRIDGE_ROM_SIZE_16_BANKS: u8 = 0x03;
+// pub const CARTRIDGE_ROM_SIZE_32_BANKS: u8 = 0x04;
+// pub const CARTRIDGE_ROM_SIZE_64_BANKS: u8 = 0x05;
+// pub const CARTRIDGE_ROM_SIZE_128_BANKS: u8 = 0x06;
+// pub const CARTRIDGE_ROM_SIZE_256_BANKS: u8 = 0x07;
+// pub const CARTRIDGE_ROM_SIZE_512_BANKS: u8 = 0x08;
+// pub const CARTRIDGE_ROM_SIZE_72_BANKS: u8 = 0x52;
+// pub const CARTRIDGE_ROM_SIZE_80_BANKS: u8 = 0x53;
+// pub const CARTRIDGE_ROM_SIZE_96_BANKS: u8 = 0x54;
 
 // Cartridge Type
 pub const CARTRIDGE_TYPE_ROM_ONLY: u8 = 0x00;

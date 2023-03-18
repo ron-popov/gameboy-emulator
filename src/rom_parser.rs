@@ -72,23 +72,23 @@ impl Rom {
         }
     }
 
-    pub fn create_test_rom() -> Rom {
-        Rom {
-            title: "TEST".to_string(),
-            manufacturer_code: [0x13, 0x37, 0x23, 0x07],
-            cgb_flag: 0xFF,
-            new_license_code: [0xAB, 0xCD],
-            sgb_flag: 0xFF,
-            cartridge_type: 0xFF,
-            rom_size: 0x00,
-            ram_size: 0x00,
-            destination_code: 0x80,
-            old_license_code: 0x00,
-            mask_rom_version_number: 0x00,
-            header_checksum: 0x00,
-            global_checksum: 0x0000,
-            data: Vec::new()
-        }
-    }
+    // pub fn create_test_rom() -> Rom {
+    //     Rom {
+    //         title: "TEST".to_string(),
+    //         manufacturer_code: [0x13, 0x37, 0x23, 0x07],
+    //         cgb_flag: 0xFF,
+    //         new_license_code: [0xAB, 0xCD],
+    //         sgb_flag: 0xFF,
+    //         cartridge_type: 0xFF,
+    //         rom_size: 0x00,
+    //         ram_size: 0x00,
+    //         destination_code: 0x80,
+    //         old_license_code: 0x00,
+    //         mask_rom_version_number: 0x00,
+    //         header_checksum: 0x00,
+    //         global_checksum: 0x0000,
+    //         data: Vec::new()
+    //     }
+    // }
 
 }

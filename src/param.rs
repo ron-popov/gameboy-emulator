@@ -3,7 +3,6 @@ use serde_json::Value;
 #[derive(Debug, Clone)]
 pub enum MemValue {
     Null,
-    Bool(bool),
     Byte(u8),
     Double(u16),
     SignedByte(i8),
@@ -26,19 +25,19 @@ impl Param {
         }
     }
 
-    pub fn get_bytes(&self) -> u8 {
-        let mut bytes_count: u8 = 0;
-        if self.json_value["bytes"] != Value::Null {
-            if !self.json_value["bytes"].is_u64() {
-                panic!("Invalid operand bytes type");
-            }
+    // pub fn get_bytes(&self) -> u8 {
+    //     let mut bytes_count: u8 = 0;
+    //     if self.json_value["bytes"] != Value::Null {
+    //         if !self.json_value["bytes"].is_u64() {
+    //             panic!("Invalid operand bytes type");
+    //         }
 
-            bytes_count = self.json_value["bytes"].as_u64().unwrap() as u8;
-        }
+    //         bytes_count = self.json_value["bytes"].as_u64().unwrap() as u8;
+    //     }
 
-        return bytes_count;
+    //     return bytes_count;
 
-    }
+    // }
     
     pub fn is_decrement(&self) -> bool {
         match self.json_value["decrement"].as_bool() {
@@ -89,9 +88,6 @@ impl Param {
             MemValue::Name(value) => {
                 format!("{}", value)
             },
-            MemValue::Bool(value) => {
-                format!("{}", if *value {"True"} else {"False"})
-            },
             _ => panic!("Failed getting printable string for this param")
         };
 
@@ -130,13 +126,6 @@ impl Param {
         match self.value {
             MemValue::Byte(value) => value,
             _ => panic!("Tries getting param value as byte, but it is {:?}", self.value)
-        }
-    }
-
-    pub fn get_bool(&self) -> bool {
-        match self.value {
-            MemValue::Bool(value) => value,
-            _ => panic!("Tries getting param value as bool, but it is {:?}", self.value)
         }
     }
 
