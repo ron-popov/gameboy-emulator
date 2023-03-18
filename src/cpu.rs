@@ -309,7 +309,7 @@ impl CPU {
                         self.set_addr(to_addr, from_value);
                     },
                     MemValue::Name(reg_name) => {
-                        assert_eq!(to_param.is_immediate(), false, "LDH: to not immediate register");
+                        assert_eq!(to_param.is_immediate(), true, "LDH: to not immediate register");
 
                         self.set_register(&reg_name, from_value);
                     },
@@ -567,8 +567,10 @@ impl CPU {
                     },
                     _ => panic!("RET: Inavlid param count")
                 }
-            }
+            },
+            // "SUB" => {}
             _ => {
+                self.dump_memory();
                 unimplemented!("Opcode name ({})", opcode_data["mnemonic"]);
             }
 
@@ -615,6 +617,20 @@ impl CPU {
 
     }
     
+    fn dump_memory(&self) {
+        let mut i: usize = 0x00;
+        let ram = self.ram_memory_ref.borrow_mut();
+        while i < 0xFFFF {
+            let mut data_string: String = "".to_string();
+            for j in 0..8 {
+                data_string += &format!("0x{:02X} ", ram.get_addr(i as u16 + j));
+                // temp_vec.push(ram.get_addr(i as u16 + j));
+            }
+            error!("0x{:04X} -> {}", i, data_string);
+            i += 8;
+        }
+    }
+
     // Register stuff
     pub fn get_register(&self, reg: &String) -> u8 {
         match reg.to_lowercase().as_str() {

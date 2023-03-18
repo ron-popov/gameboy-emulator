@@ -1,5 +1,5 @@
 // General
-pub const SCREEN_WIDHT: usize = 160;
+pub const SCREEN_WIDTH: usize = 160;
 pub const SCREEN_HEIGHT: usize = 144;
 pub const GBEMULATOR_ASCII_ART: &str = "\n   _____ ____                       _       _             \n  / ____|  _ \\                     | |     | |            \n | |  __| |_) | ___ _ __ ___  _   _| | __ _| |_ ___  _ __ \n | | |_ |  _ < / _ \\ \'_ ` _ \\| | | | |/ _` | __/ _ \\| \'__|\n | |__| | |_) |  __/ | | | | | |_| | | (_| | || (_) | |   \n  \\_____|____/ \\___|_| |_| |_|\\__,_|_|\\__,_|\\__\\___/|_|   \n                                                          \n                                                          \n";
 
@@ -68,20 +68,43 @@ pub const CARTRIDGE_ROM_SIZE_NO_BANKS: u8 = 0x00;
 // pub const CARTRIDGE_ROM_SIZE_96_BANKS: u8 = 0x54;
 
 // PPU Stuff
-pub const PPU_JOYPAD_INPUT_ADDR:  Vec<u16> = vec![0xFF00];
-pub const PPU_SERIAL_ADDR:        Vec<u16> = vec![0xFF01, 0xFF02];
-pub const PPU_TIMER_DIVIDER_ADDR: Vec<u16> = (0xFF04..0xFF08).collect();
-pub const PPU_AUDIO_ADDR:         Vec<u16> = (0xFF10..0xFF27).collect();
-pub const PPU_WAVE_ADDR:          Vec<u16> = (0xFF30..0xFF40).collect();
-pub const PPU_LCD_ADDR:           Vec<u16> = (0xFF40..0xFF4C).collect();
+// --- PPU ADDR Ranges ---
+pub const PPU_JOYPAD_INPUT_ADDR:  [u16; 0x01] = 
+  [0xFF00];
+
+pub const PPU_SERIAL_ADDR:        [u16; 0x02] = 
+  [0xFF01, 0xFF02];
+
+pub const PPU_TIMER_DIVIDER_ADDR: [u16; 0x04] = 
+  [0xFF04, 0xFF05, 0xFF06, 0xFF07];
+
+pub const PPU_AUDIO_ADDR:         [u16; 0x17] = 
+  [0xFF10, 0xFF11, 0xFF12, 0xFF13, 0xFF14, 0xFF15, 0xFF16, 0xFF17, 0xFF18, 0xFF19, 0xFF1A, 0xFF1B, 0xFF1C, 0xFF1D, 0xFF1E, 0xFF1F, 0xFF20, 0xFF21, 0xFF22, 0xFF23, 0xFF24, 0xFF25, 0xFF26];
+
+pub const PPU_WAVE_ADDR:          [u16; 0x10] = 
+  [0xFF30, 0xFF31, 0xFF32, 0xFF33, 0xFF34, 0xFF35, 0xFF36, 0xFF37, 0xFF38, 0xFF39, 0xFF3A, 0xFF3B, 0xFF3C, 0xFF3D, 0xFF3E, 0xFF3F];
+
+pub const PPU_LCD_ADDR:           [u16; 0x0C] = 
+  [0xFF40, 0xFF41, 0xFF42, 0xFF43, 0xFF44, 0xFF45, 0xFF46, 0xFF47, 0xFF48, 0xFF49, 0xFF4A, 0xFF4B];
 // TODO: .......
+
+// --- PPU ADDR and each bit meaning ---
+pub const PPU_LCD_CONTROL_ADDR: u16                                 = 0xFF40;
+pub const PPU_LCD_CONTROL_BIT_ENABLE: u8                            = 7;
+pub const PPU_LCD_CONTROL_BIT_WINDOW_TILE_MAP_AREA: u8              = 6;
+pub const PPU_LCD_CONTROL_BIT_WINDOW_ENABLE: u8                     = 5;
+pub const PPU_LCD_CONTROL_BIT_BG_AND_WINDOW_TILE_MAP_AREA: u8       = 4;
+pub const PPU_LCD_CONTROL_BIT_BG_TILE_MAP_AREA: u8                  = 3;
+pub const PPU_LCD_CONTROL_BIT_OBJ_SIZE: u8                          = 2;
+pub const PPU_LCD_CONTROL_BIT_OBJ_ENABLE: u8                        = 1;
+pub const PPU_LCD_CONTROL_BIT_BG_AND_WINDOW_PRIORITY: u8            = 0;
 
 // Cartridge Type
 pub const CARTRIDGE_TYPE_ROM_ONLY: u8 = 0x00;
 
 pub fn bit_check(value: u8, bit: u8) -> bool {
   let bit_mask: u8 = 0x01 << bit;
-  return (value & bit_mask == bit_mask);
+  return value & bit_mask == bit_mask;
 }
 
 pub fn bit_enable(value: u8, bit: u8) -> u8 {
@@ -100,4 +123,8 @@ pub fn bit_set(value: u8, bit_index: u8, bit: bool) -> u8 {
   } else {
     return bit_disable(value, bit_index);
   }
+}
+
+pub fn get_empty_screen_buffer(width: usize, height: usize) -> Vec<u32> {
+  [0; SCREEN_HEIGHT * SCREEN_WIDTH].to_vec()
 }

@@ -71,7 +71,7 @@ fn main() {
     let ram_memory_ref: Rc<RefCell<RamMemory>> = Rc::new(RefCell::new(orig_ram_memory));
 
     
-    let orig_ppu: PPU = PPU::init();
+    let orig_ppu: PPU = PPU::init(ram_memory_ref.clone());
     let ppu_ref: Rc<RefCell<PPU>> = Rc::new(RefCell::new(orig_ppu));
     
     let mut cpu: CPU = CPU::init_with_ram_ppu(ram_memory_ref.clone(), ppu_ref.clone());
