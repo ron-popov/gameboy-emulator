@@ -35,6 +35,8 @@ impl PPU {
         
     }
 
+    
+
     pub fn get_addr(&self, addr: u16) -> u8 {
         0xFF
     }
