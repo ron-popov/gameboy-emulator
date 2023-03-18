@@ -67,5 +67,37 @@ pub const CARTRIDGE_ROM_SIZE_NO_BANKS: u8 = 0x00;
 // pub const CARTRIDGE_ROM_SIZE_80_BANKS: u8 = 0x53;
 // pub const CARTRIDGE_ROM_SIZE_96_BANKS: u8 = 0x54;
 
+// PPU Stuff
+pub const PPU_JOYPAD_INPUT_ADDR:  Vec<u16> = vec![0xFF00];
+pub const PPU_SERIAL_ADDR:        Vec<u16> = vec![0xFF01, 0xFF02];
+pub const PPU_TIMER_DIVIDER_ADDR: Vec<u16> = (0xFF04..0xFF08).collect();
+pub const PPU_AUDIO_ADDR:         Vec<u16> = (0xFF10..0xFF27).collect();
+pub const PPU_WAVE_ADDR:          Vec<u16> = (0xFF30..0xFF40).collect();
+pub const PPU_LCD_ADDR:           Vec<u16> = (0xFF40..0xFF4C).collect();
+// TODO: .......
+
 // Cartridge Type
 pub const CARTRIDGE_TYPE_ROM_ONLY: u8 = 0x00;
+
+pub fn bit_check(value: u8, bit: u8) -> bool {
+  let bit_mask: u8 = 0x01 << bit;
+  return (value & bit_mask == bit_mask);
+}
+
+pub fn bit_enable(value: u8, bit: u8) -> u8 {
+  let bit_mask: u8 = 0x01 << bit;
+  return value | bit_mask;
+}
+
+pub fn bit_disable(value: u8, bit: u8) -> u8 {
+  let bit_mask: u8 = !(0x01 << bit);
+  return value & bit_mask;
+}
+
+pub fn bit_set(value: u8, bit_index: u8, bit: bool) -> u8 {
+  if bit {
+    return bit_enable(value, bit_index);
+  } else {
+    return bit_disable(value, bit_index);
+  }
+}

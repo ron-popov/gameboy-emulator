@@ -3,7 +3,8 @@ use minifb::{Window, WindowOptions, Scale};
 
 pub struct PPU {
     buffer: Vec<u32>,
-    window: Window
+    window: Window,
+    lcd_enabled: bool
 }
 
 impl PPU {

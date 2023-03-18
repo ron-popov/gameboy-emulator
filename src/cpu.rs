@@ -119,22 +119,29 @@ impl CPU {
                 set_sub_flag = Some(true);
 
                 let param = params.get(0).unwrap().get_byte();
-                match self.a_reg.checked_sub(param) {
-                    Some(sub_result) => {
-                        // Valid sub result
-                        set_carry_flag = Some(false);
+                let (sub_result, did_underflow) = u8::overflowing_sub(self.a_reg, param);
+                set_carry_flag = Some(did_underflow);
+                set_zero_flag = Some(sub_result == 0);
+
+                self.a_reg = sub_result;
+
+                // match did_underflow {
+                //     false => {
+                //         // Valid sub result
+                //         set_carry_flag = Some(false);
                         
-                        if sub_result == 0 {
-                            set_zero_flag = Some(true);
-                        } else {
-                            set_zero_flag = Some(false);
-                        }
-                    }, 
-                    None => {
-                        //Underflow happened
-                        set_carry_flag = Some(true);
-                    }
-                }
+                //         if sub_result == 0 {
+                //             set_zero_flag = Some(true);
+                //         } else {
+                //             set_zero_flag = Some(false);
+                //         }
+                //     }, 
+                //     true => {
+                //         //Underflow happened
+                //         trace!("CP: Underflow happaned");
+                //         set_carry_flag = Some(true);
+                //     }
+                // }
 
                 set_half_carry_flag = Some((((self.a_reg & 0xf).wrapping_sub(param & 0xf)) & 0x10) != 0);
             },
@@ -539,13 +546,13 @@ impl CPU {
                 set_carry_flag = Some((old_value & 0b10000000) == 0b10000000);
                 set_half_carry_flag = Some(false);
                 set_sub_flag = Some(false);
+                set_zero_flag = Some(false);
 
                 let mut new_value = old_value << 1;
                 if self.get_carry_flag() {
                     new_value += 1;
                 }
 
-                set_zero_flag = Some(new_value == 0);
                 self.a_reg = new_value;
             },
             "RET" => { // Return, maybe conditional
@@ -917,8 +924,8 @@ impl CPU {
             let flag_status = opcode_data["flags"][flag].as_str().unwrap();
             let flag_status_pretty = match flag_status {
                 "-" => "Unaffected",
-                "0" => "Turned On",
-                "1" => "Turned Off",
+                "0" => "Turned Off",
+                "1" => "Turned On",
                 _ => "By Value"
             };
 
@@ -938,35 +945,35 @@ impl CPU {
 
         // Params
         // opcode_string.push("-- PARAMS --".to_string());
-        // for (i, param) in opcode_data["operands"].as_array().unwrap().iter().enumerate() {
-        //     let mut param_string = format!("    Param #{} -> {}",
-        //         i,
-        //         param["name"].as_str().unwrap());
+        for (i, param) in opcode_data["operands"].as_array().unwrap().iter().enumerate() {
+            let mut param_string = format!("    Param #{} -> {}",
+                i,
+                param["name"].as_str().unwrap());
 
-        //     let mut options: Vec<String> = vec![];
+            let mut options: Vec<String> = vec![];
 
-        //     let immediate = param["immediate"].as_bool();
-        //     if immediate.is_some() && immediate.unwrap() {
-        //         options.push("immediate".to_string());
-        //     }
+            let immediate = param["immediate"].as_bool();
+            if immediate.is_some() && immediate.unwrap() {
+                options.push("immediate".to_string());
+            }
 
-        //     let decrement = param["decrement"].as_bool();
-        //     if decrement.is_some() && decrement.unwrap() {
-        //         options.push("decrement".to_string());
-        //     }
+            let decrement = param["decrement"].as_bool();
+            if decrement.is_some() && decrement.unwrap() {
+                options.push("decrement".to_string());
+            }
 
-        //     let increment = param["increment"].as_bool();
-        //     if increment.is_some() && increment.unwrap() {
-        //         options.push("increment".to_string());
-        //     }
+            let increment = param["increment"].as_bool();
+            if increment.is_some() && increment.unwrap() {
+                options.push("increment".to_string());
+            }
 
-        //     if options.len() != 0 {
-        //         param_string += " ";
-        //         param_string += &options.join(", ");
-        //     }
+            if options.len() != 0 {
+                param_string += " ";
+                param_string += &options.join(", ");
+            }
 
-        //     opcode_string.push(param_string);
-        // }
+            opcode_string.push(param_string);
+        }
 
         return opcode_string;
     }
