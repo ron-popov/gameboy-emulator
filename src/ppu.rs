@@ -4,9 +4,8 @@ use std::rc::Rc;
 use std::cell::RefCell;
 use minifb::{Window, WindowOptions, Scale};
 
-
-type Sprite = [u8; 16];
-type SpriteBitmap = [u32; 64];
+type Sprite = [u8; 16]; // Sprite as represented in VRAM
+type SpriteBitmap = [u32; 64]; // Sprite as 64 (8 by 8) pixels
 
 pub struct PPU {
     buffer: Vec<u32>,
@@ -33,14 +32,16 @@ impl PPU {
         // Limit FPS to about 60FPS
         window.limit_update_rate(Some(std::time::Duration::from_micros(16600)));
 
+
+        // Why render before initializing the ppu ?
         window.update_with_buffer(
-            &get_empty_screen_buffer(SCREEN_WIDTH, SCREEN_HEIGHT), 
+            &get_empty_screen_buffer(), 
             SCREEN_WIDTH, SCREEN_HEIGHT).unwrap_or_else(|e| {
             panic!("Failed rendering window due to error ({})", e);
         });
 
         PPU {
-            buffer: [0; SCREEN_HEIGHT * SCREEN_WIDTH].to_vec(),
+            buffer: get_empty_screen_buffer(),
             window: window,
             ram_memory: ram_memory_ref,
             is_enabled: false
@@ -83,12 +84,41 @@ impl PPU {
                     if !self.is_enabled {
                         trace!("PPU: Enabling lcd display");
                         self.is_enabled = true;
+                        let mut sprite_bitmap: SpriteBitmap = Self::sprite_to_bitmap(self.get_sprite_tile(0x01));
+                        self.draw_sprite_in_buffer(sprite_bitmap, 0, 0);
+                        sprite_bitmap = Self::sprite_to_bitmap(self.get_sprite_tile(0x02));
+                        self.draw_sprite_in_buffer(sprite_bitmap, 0, 10);
+                        sprite_bitmap = Self::sprite_to_bitmap(self.get_sprite_tile(0x03));
+                        self.draw_sprite_in_buffer(sprite_bitmap, 0, 20);
+                        sprite_bitmap = Self::sprite_to_bitmap(self.get_sprite_tile(0x04));
+                        self.draw_sprite_in_buffer(sprite_bitmap, 0, 30);
+                        sprite_bitmap = Self::sprite_to_bitmap(self.get_sprite_tile(0x05));
+                        self.draw_sprite_in_buffer(sprite_bitmap, 0, 40);
+                        sprite_bitmap = Self::sprite_to_bitmap(self.get_sprite_tile(0x06));
+                        self.draw_sprite_in_buffer(sprite_bitmap, 0, 50);
+                        sprite_bitmap = Self::sprite_to_bitmap(self.get_sprite_tile(0x07));
+                        self.draw_sprite_in_buffer(sprite_bitmap, 0, 60);
+                        sprite_bitmap = Self::sprite_to_bitmap(self.get_sprite_tile(0x08));
+                        self.draw_sprite_in_buffer(sprite_bitmap, 0, 70);
+                        sprite_bitmap = Self::sprite_to_bitmap(self.get_sprite_tile(0x09));
+                        self.draw_sprite_in_buffer(sprite_bitmap, 10, 0);
+                        sprite_bitmap = Self::sprite_to_bitmap(self.get_sprite_tile(0x0A));
+                        self.draw_sprite_in_buffer(sprite_bitmap, 10, 10);
+                        sprite_bitmap = Self::sprite_to_bitmap(self.get_sprite_tile(0x0B));
+                        self.draw_sprite_in_buffer(sprite_bitmap, 10, 20);
+                        sprite_bitmap = Self::sprite_to_bitmap(self.get_sprite_tile(0x0C));
+                        self.draw_sprite_in_buffer(sprite_bitmap, 10, 30);
+                        sprite_bitmap = Self::sprite_to_bitmap(self.get_sprite_tile(0x0D));
+                        self.draw_sprite_in_buffer(sprite_bitmap, 10, 40);
+
+
+                        
                     }
                 } else {
                     if self.is_enabled { // Disable only if screen is enabled
                         trace!("PPU: Disabling lcd display");
                         self.window.update_with_buffer(
-                            &get_empty_screen_buffer(SCREEN_WIDTH, SCREEN_HEIGHT), 
+                            &get_empty_screen_buffer(), 
                             SCREEN_WIDTH, SCREEN_HEIGHT).unwrap_or_else(|e| {
                                 panic!("PPU: Failed rendering window due to error ({})", e);
                         });
@@ -112,6 +142,8 @@ impl PPU {
         // let control_reg = self.ram_memory.borrow_mut().get_addr(PPU_LCD_CONTROL_ADDR);
         // if bit_check(control_reg, PPU_LCD_CONTROL_BIT_BG_TILE_MAP_AREA);
 
+        debug!("PPU: Getting sprite id {}", tile_id);
+
         let tile_addr: u16 = 0x8000 + 16 * tile_id as u16;
         
         let mut sprite: Sprite = [0 as u8; 16];
@@ -122,9 +154,59 @@ impl PPU {
         return sprite;
     }
 
-    // fn sprite_to_bitmap(sprite: Sprite) -> SpriteBitmap {
+    fn sprite_to_bitmap(sprite: Sprite) -> SpriteBitmap {
+        let mut sprite_bitmap: SpriteBitmap = [0x00ffffff; 64];
+        let mut counter: usize = 0;
+        for pair in sprite.chunks(2) {
+            let first = pair[0];
+            let second = pair[1];
 
-    // }
+            for bit in (0..8).rev() {
+                let color_code: u8 = match [bit_check(first, bit), bit_check(second, bit)] {
+                    [false, false] => 0, 
+                    [true, false] => 1,
+                    [false, true] => 2,
+                    [true, true] => 3,
+                    _ => panic!("PPU: Invalid types in sprite_to_bitmap")
+                };
+
+                sprite_bitmap[counter] = Self::get_color_by_color_pallete(color_code);
+
+                counter += 1;
+            }
+        }
+
+        return sprite_bitmap;
+    }
+
+    fn draw_sprite_in_buffer(&mut self, sprite: SpriteBitmap, x: usize, y: usize) {
+        let mut new_y = y;
+        for row in sprite.chunks(8) {
+            for (index, pixel) in row.iter().enumerate() {
+                let pixel_index = new_y * SCREEN_WIDTH + x + index;
+                self.buffer[pixel_index] = *pixel;
+            }
+            new_y += 1;
+        }
+    }
+
+    fn get_color_by_color_pallete(color_code: u8) -> u32 {
+        match color_code {
+            0 => { //WHITE
+                return COLOR_WHITE;
+            },
+            1 => {
+                return COLOR_LIGHT_GREY;
+            },
+            2 => {
+                return COLOR_DARK_GREY;
+            },
+            3 => {
+                return COLOR_BLACK;
+            },
+            _ => panic!("Invalid color code")
+        }
+    }
 
     pub fn render(&mut self){
         if self.is_enabled {

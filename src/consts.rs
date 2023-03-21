@@ -99,6 +99,12 @@ pub const PPU_LCD_CONTROL_BIT_OBJ_SIZE: u8                          = 2;
 pub const PPU_LCD_CONTROL_BIT_OBJ_ENABLE: u8                        = 1;
 pub const PPU_LCD_CONTROL_BIT_BG_AND_WINDOW_PRIORITY: u8            = 0;
 
+// Colors
+pub const COLOR_WHITE: u32 = 0x00ffffff;
+pub const COLOR_LIGHT_GREY: u32 = 0x00aaaaaa;
+pub const COLOR_DARK_GREY: u32 = 0x00555555;
+pub const COLOR_BLACK: u32 = 0x00000000;
+
 // Cartridge Type
 pub const CARTRIDGE_TYPE_ROM_ONLY: u8 = 0x00;
 
@@ -125,6 +131,6 @@ pub fn bit_set(value: u8, bit_index: u8, bit: bool) -> u8 {
   }
 }
 
-pub fn get_empty_screen_buffer(width: usize, height: usize) -> Vec<u32> {
-  [0; SCREEN_HEIGHT * SCREEN_WIDTH].to_vec()
+pub fn get_empty_screen_buffer() -> Vec<u32> {
+  [COLOR_WHITE; SCREEN_HEIGHT * SCREEN_WIDTH].to_vec()
 }
