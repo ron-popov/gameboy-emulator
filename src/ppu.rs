@@ -4,6 +4,8 @@ use std::rc::Rc;
 use std::cell::RefCell;
 use minifb::{Window, WindowOptions, Scale};
 
+use bmp::{Image, Pixel};
+
 type Sprite = [u8; 16]; // Sprite as represented in VRAM
 type SpriteBitmap = [u32; 64]; // Sprite as 64 (8 by 8) pixels
 
@@ -84,35 +86,6 @@ impl PPU {
                     if !self.is_enabled {
                         trace!("PPU: Enabling lcd display");
                         self.is_enabled = true;
-                        let mut sprite_bitmap: SpriteBitmap = Self::sprite_to_bitmap(self.get_sprite_tile(0x01));
-                        self.draw_sprite_in_buffer(sprite_bitmap, 0, 0);
-                        sprite_bitmap = Self::sprite_to_bitmap(self.get_sprite_tile(0x02));
-                        self.draw_sprite_in_buffer(sprite_bitmap, 0, 10);
-                        sprite_bitmap = Self::sprite_to_bitmap(self.get_sprite_tile(0x03));
-                        self.draw_sprite_in_buffer(sprite_bitmap, 0, 20);
-                        sprite_bitmap = Self::sprite_to_bitmap(self.get_sprite_tile(0x04));
-                        self.draw_sprite_in_buffer(sprite_bitmap, 0, 30);
-                        sprite_bitmap = Self::sprite_to_bitmap(self.get_sprite_tile(0x05));
-                        self.draw_sprite_in_buffer(sprite_bitmap, 0, 40);
-                        sprite_bitmap = Self::sprite_to_bitmap(self.get_sprite_tile(0x06));
-                        self.draw_sprite_in_buffer(sprite_bitmap, 0, 50);
-                        sprite_bitmap = Self::sprite_to_bitmap(self.get_sprite_tile(0x07));
-                        self.draw_sprite_in_buffer(sprite_bitmap, 0, 60);
-                        sprite_bitmap = Self::sprite_to_bitmap(self.get_sprite_tile(0x08));
-                        self.draw_sprite_in_buffer(sprite_bitmap, 0, 70);
-                        sprite_bitmap = Self::sprite_to_bitmap(self.get_sprite_tile(0x09));
-                        self.draw_sprite_in_buffer(sprite_bitmap, 10, 0);
-                        sprite_bitmap = Self::sprite_to_bitmap(self.get_sprite_tile(0x0A));
-                        self.draw_sprite_in_buffer(sprite_bitmap, 10, 10);
-                        sprite_bitmap = Self::sprite_to_bitmap(self.get_sprite_tile(0x0B));
-                        self.draw_sprite_in_buffer(sprite_bitmap, 10, 20);
-                        sprite_bitmap = Self::sprite_to_bitmap(self.get_sprite_tile(0x0C));
-                        self.draw_sprite_in_buffer(sprite_bitmap, 10, 30);
-                        sprite_bitmap = Self::sprite_to_bitmap(self.get_sprite_tile(0x0D));
-                        self.draw_sprite_in_buffer(sprite_bitmap, 10, 40);
-
-
-                        
                     }
                 } else {
                     if self.is_enabled { // Disable only if screen is enabled
@@ -208,6 +181,25 @@ impl PPU {
         }
     }
 
+    // Dumps all sprites to a file
+    pub fn dump_sprites(&self) {
+        let mut img = Image::new(128 ,128);
+
+        for sprite_id in 0..256 {
+            let sprite: Sprite = self.get_sprite_tile(sprite_id);
+            let sprite_bitmap: SpriteBitmap = Self::sprite_to_bitmap(sprite);
+
+            for argb in sprite_bitmap {
+                let pixel = match argb {
+                    COLOR_WHITE => Pixel::new(0xff,0xff,0xff),
+                    COLOR_LIGHT_GREY => Pixel::new(0xff,0xff,0xff),
+                    COLOR_WHITE => Pixel::new(0xff,0xff,0xff),
+                    COLOR_WHITE => Pixel::new(0xff,0xff,0xff),
+                },
+            }
+        }
+    }
+
     pub fn render(&mut self){
         if self.is_enabled {
             trace!("PPU: Rendering frame");
@@ -217,5 +209,7 @@ impl PPU {
         } else {
             trace!("PPU: Window disabled, not rendering")
         }
+
+        self.dump_sprites();
     }
 }

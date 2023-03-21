@@ -617,7 +617,7 @@ impl CPU {
 
     }
     
-    fn dump_memory(&self) {
+    pub fn dump_memory(&self) {
         let mut i: usize = 0x00;
         let ram = self.ram_memory_ref.borrow_mut();
         while i < 0xFFFF {
