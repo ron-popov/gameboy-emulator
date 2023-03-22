@@ -38,15 +38,15 @@ impl Rom {
 
         // Validate cartridge type
         let cartridge_type: u8 = *rom_content.get(0x147).expect("Invalid rom structure (cartridge_type)");
-        if cartridge_type != CARTRIDGE_TYPE_ROM_ONLY {
-            panic!("Unsupported cartridge type (0x{:02X})", cartridge_type);
-        }
+        // if cartridge_type != CARTRIDGE_TYPE_ROM_ONLY {
+        //     panic!("Unsupported cartridge type (0x{:02X})", cartridge_type);
+        // }
 
         // Validate rom size
         let rom_size: u8 = *rom_content.get(0x148).expect("Invalid rom structure (rom_size)");
-        if rom_size != CARTRIDGE_ROM_SIZE_NO_BANKS {
-            panic!("Unsupported rom size (0x{:02X})", rom_size);
-        }
+        // if rom_size != CARTRIDGE_ROM_SIZE_NO_BANKS {
+        //     panic!("Unsupported rom size (0x{:02X})", rom_size);
+        // }
 
         // Validate rom size
         let ram_size: u8 = *rom_content.get(0x149).expect("Invalid rom structure (ram_size)");

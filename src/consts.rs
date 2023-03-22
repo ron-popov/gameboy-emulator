@@ -105,7 +105,7 @@ pub const COLOR_LIGHT_GREY: u32 = 0x00aaaaaa;
 pub const COLOR_DARK_GREY: u32 = 0x00555555;
 pub const COLOR_BLACK: u32 = 0x00000000;
 
-pub const SPRITE_DUMP_PATH: &str = "sprites_dump.bmp"
+pub const SPRITE_DUMP_PATH: &str = "sprites_dump.bmp";
 
 // Cartridge Type
 pub const CARTRIDGE_TYPE_ROM_ONLY: u8 = 0x00;

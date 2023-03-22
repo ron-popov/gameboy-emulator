@@ -183,25 +183,46 @@ impl PPU {
 
     // Dumps all sprites to a file
     pub fn dump_sprites(&self) {
-        let mut img = Image::new(128 ,128);
+        let mut img = Image::new(256 ,256);
 
-        for sprite_id in 0..256 {
+        for sprite_id in 0..=255 {
             let sprite: Sprite = self.get_sprite_tile(sprite_id);
             let sprite_bitmap: SpriteBitmap = Self::sprite_to_bitmap(sprite);
 
-            for argb in sprite_bitmap {
-                let pixel = match argb {
+            let initial_x = (sprite_id % 8) * 8;
+            let initial_y = (sprite_id / 8) * 8;
+            for (index, argb) in sprite_bitmap.iter().enumerate() {
+                let pixel = match *argb {
                     COLOR_WHITE => Pixel::new(0xff,0xff,0xff),
-                    COLOR_LIGHT_GREY => Pixel::new(0xff,0xff,0xff),
-                    COLOR_WHITE => Pixel::new(0xff,0xff,0xff),
-                    COLOR_WHITE => Pixel::new(0xff,0xff,0xff),
-                },
+                    COLOR_LIGHT_GREY => Pixel::new(0xaa,0xaa,0xaa),
+                    COLOR_DARK_GREY => Pixel::new(0x55,0x55,0x55),
+                    COLOR_BLACK => Pixel::new(0x00,0x00,0x00),
+                    _ => panic!("PPU: Sprite Dump - Invalid color code")
+                };
+
+                let final_x = initial_x + (index as u8 % 8);
+                let final_y = initial_y + (index as u8 / 8);
+
+                img.set_pixel(final_x as u32, final_y as u32, pixel);
+            }
+        }
+
+        let save_result = img.save(SPRITE_DUMP_PATH);
+        match save_result {
+            Ok(_) => (),
+            Err(e) => {
+                error!("Failed saving memory dump ({})", e);
             }
         }
     }
 
     pub fn render(&mut self){
         if self.is_enabled {
+            // Render all frames
+            // for sprite_id in 0..=255 {
+                
+            // }
+
             trace!("PPU: Rendering frame");
             self.window.update_with_buffer(&self.buffer, SCREEN_WIDTH, SCREEN_HEIGHT).unwrap_or_else(|e| {
                 panic!("Failed rendering window due to error ({})", e);
