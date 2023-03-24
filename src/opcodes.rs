@@ -5301,10 +5301,10 @@ pub const OPCODES_JSON: &str = r#"
 			],
 			"immediate": true,
 			"flags": {
-				"Z": "Z",
-				"N": "N",
-				"H": "H",
-				"C": "C"
+				"Z": "-",
+				"N": "-",
+				"H": "-",
+				"C": "-"
 			}
 		},
 		"0xF2": {

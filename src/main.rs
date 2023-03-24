@@ -85,9 +85,9 @@ fn main() {
 
     loop {
         // Only run boot rom for now
-        if cpu.get_program_counter() == 0x0100 {
-            panic!("No more boot rom");
-        }
+        // if cpu.get_program_counter() == 0x0100 {
+        //     panic!("No more boot rom");
+        // }
 
         // Execute a single cpu instruction
         cpu.execute_instruction();

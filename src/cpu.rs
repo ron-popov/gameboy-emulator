@@ -44,7 +44,8 @@ impl CPU {
             f_reg: 0,
             h_reg: 0,
             l_reg: 0,
-            pc_reg: 0x000C,
+            // pc_reg: 0x000C,
+            pc_reg: 0x0100,
             sp_reg: 0xFFFE,
             opcodes: opcodes
         }
@@ -105,6 +106,7 @@ impl CPU {
             "JP" => { // JUMP
                 if params.len() == 1 {
                     let target_addr: u16 = params.get(0).unwrap().get_double();
+                    assert_ne!(target_addr, 0xC3C3, "JP: Blargg rom test fail");
                     trace!("Jumping to addr 0x{:04X}", target_addr);
                     
                     should_inc_pc = false;
@@ -503,6 +505,8 @@ impl CPU {
                 let reg_name = params.get(0).unwrap().get_name();
                 let popped_value = self.stack_pop_double();
                 self.set_double_register(&reg_name, popped_value);
+
+                
             },
             "RL" => { // Rotate left through the carry flag
                 assert_eq!(params.len(), 1);
@@ -650,7 +654,7 @@ impl CPU {
                 data_string += &format!("0x{:02X} ", ram.get_addr(i as u16 + j));
                 // temp_vec.push(ram.get_addr(i as u16 + j));
             }
-            error!("0x{:04X} -> {}", i, data_string);
+            trace!("0x{:04X} -> {}", i, data_string);
             i += 8;
         }
     }
@@ -977,13 +981,6 @@ impl CPU {
                 flag_status_pretty
             ))            
         }
-        // for param in opcode_data["flags"].as_array().unwrap() {
-            // opcode_string.push(
-            //     format!("    {}",
-            //     param.as_str().unwrap().to_string()
-            // ))
-        // }
-
 
         // Params
         // opcode_string.push("-- PARAMS --".to_string());
