@@ -568,12 +568,36 @@ impl CPU {
                     _ => panic!("RET: Inavlid param count")
                 }
             },
-            // "SUB" => {}
+            "SUB" => {
+                assert_eq!(params.len(), 1, "SUB: Too much params");
+                let param = params.get(0).unwrap();
+
+                let value: u8 = match param.get_value() {
+                    MemValue::Name(reg_name) => {
+                        if param.is_immediate() {
+                            self.get_register(&reg_name)
+                        } else {
+                            let addr = self.get_double_register(&reg_name);
+                            self.get_addr(addr)
+                        }
+                    },
+                    MemValue::Byte(param_value) => {
+                        param_value
+                    },
+                    _ => panic!("SUB: Invalid param type")
+                };
+
+                let (sub_result, did_underflow) = u8::overflowing_sub(self.a_reg, value);
+
+                set_sub_flag = Some(true);
+                set_zero_flag = Some(sub_result == 0);
+                set_carry_flag = Some(did_underflow);
+                set_half_carry_flag = Some((((self.a_reg & 0xf).wrapping_sub(value & 0xf)) & 0x10) != 0);
+            },
             _ => {
                 self.dump_memory();
                 unimplemented!("Opcode name ({})", opcode_data["mnemonic"]);
             }
-
         }
 
         if should_inc_pc {
@@ -665,6 +689,8 @@ impl CPU {
             return self.pc_reg;
         }
 
+        assert_eq!(reg.len(), 2, "CPU: Tried getting double register from single reg");
+
         let first_reg: String = reg[0..1].to_string();
         let second_reg: String = reg[1..2].to_string();
 
@@ -675,7 +701,7 @@ impl CPU {
     }
 
     fn set_double_register(&mut self, reg: &String, value: u16) {
-        assert_eq!(reg.len(), 2, "Double register name is not of len 2");
+        assert_eq!(reg.len(), 2, "CPU: Tried setting double register from single reg");
 
         match reg.to_uppercase().as_str() {
             "SP" => self.sp_reg = value,

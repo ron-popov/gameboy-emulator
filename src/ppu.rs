@@ -20,7 +20,7 @@ impl PPU {
     pub fn init(ram_memory_ref: Rc<RefCell<RamMemory>>) -> PPU {
         // Configure scale
         let mut window_options: WindowOptions = WindowOptions::default();
-        window_options.scale = Scale::X4;
+        window_options.scale = Scale::X2;
 
         let mut window = Window::new(
             "GBEmulator",
@@ -32,7 +32,9 @@ impl PPU {
         });
 
         // Limit FPS to about 60FPS
-        window.limit_update_rate(Some(std::time::Duration::from_micros(16600)));
+        // window.limit_update_rate(Some(std::time::Duration::from_micros(16600)));
+
+        window.limit_update_rate(Some(std::time::Duration::from_micros(1660)));
 
 
         // Why render before initializing the ppu ?
@@ -220,8 +222,24 @@ impl PPU {
         if self.is_enabled {
             // Render all frames
             // for sprite_id in 0..=255 {
-                
+            //     // info!("Rendering sprite {}", sprite_id);
+            //     let sprite: Sprite = self.get_sprite_tile(sprite_id);
+            //     let sprite_bitmap: SpriteBitmap = Self::sprite_to_bitmap(sprite);
+    
+            //     let initial_x = (sprite_id % 8) * 8;
+            //     let initial_y = (sprite_id / 8) * 8;
+            //     for (index, argb) in sprite_bitmap.iter().enumerate() {
+            //         let final_x = initial_x + (index as u8 % 8);
+            //         let final_y = initial_y + (index as u8 / 8);
+    
+            //         let pixel_index: usize = final_y as usize * SCREEN_WIDTH + final_x as usize;
+
+            //         // info!("Pixel index {},{} => {}", final_y, final_x, pixel_index);
+            //         self.buffer[pixel_index] = *argb;
+            //     }
             // }
+
+            // self.dump_sprites();
 
             trace!("PPU: Rendering frame");
             self.window.update_with_buffer(&self.buffer, SCREEN_WIDTH, SCREEN_HEIGHT).unwrap_or_else(|e| {
@@ -231,6 +249,6 @@ impl PPU {
             trace!("PPU: Window disabled, not rendering")
         }
 
-        self.dump_sprites();
+        // self.dump_sprites();
     }
 }
