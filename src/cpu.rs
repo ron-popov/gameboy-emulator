@@ -26,6 +26,7 @@ pub struct CPU {
     l_reg: u8,
     sp_reg: u16,
     pc_reg: u16,
+    instruction_counter: usize,
     opcodes: Value
 }
 
@@ -47,6 +48,7 @@ impl CPU {
             // pc_reg: 0x000C,
             pc_reg: 0x0100,
             sp_reg: 0xFFFE,
+            instruction_counter: 0,
             opcodes: opcodes
         }
     }
@@ -59,12 +61,17 @@ impl CPU {
         let mut set_carry_flag: Option<bool> = Option::None;
         let mut set_sub_flag: Option<bool> = Option::None;
         let mut set_half_carry_flag: Option<bool> = Option::None;
-        
+        let is_opcode_cbprefixed: bool;
+
+        self.instruction_counter += 1;
+
         if opcode == 0xCB {
+            is_opcode_cbprefixed = true;
             opcode = self.get_addr(self.pc_reg + 1);
 
             opcode_data = self.opcodes["cbprefixed"][format!("0x{:02X}", opcode)].clone();
         } else {
+            is_opcode_cbprefixed = false;
             opcode_data = self.opcodes["unprefixed"][format!("0x{:02X}", opcode)].clone();
         }
             
@@ -77,7 +84,6 @@ impl CPU {
         }
         
         // Parsing
-        
         let params: Vec<Param> = self.get_params(&opcode_data);
         
         // Debug Prints
@@ -90,6 +96,9 @@ impl CPU {
         trace!("");
         trace!("");
         debug!("0x{:04X} -> {} {}", self.pc_reg, opcode_name, param_data);
+        trace!("Instruction #{}", self.instruction_counter);
+
+        trace!("OPCODE 0x{:02X}, IS_CB_PREFIXED: {}", opcode, is_opcode_cbprefixed);
 
         // Trace Prints
         for s in Self::pretty_opcode_data(&opcode_data) {
@@ -106,7 +115,13 @@ impl CPU {
             "JP" => { // JUMP
                 if params.len() == 1 {
                     let target_addr: u16 = params.get(0).unwrap().get_double();
-                    assert_ne!(target_addr, 0xC3C3, "JP: Blargg rom test fail");
+
+                    // Blargg test rom stuff
+                    if target_addr == 0xC3C3 {
+                        self.dump_memory();
+                        panic!("JP: Blargg rom test fail");
+                    }
+
                     trace!("Jumping to addr 0x{:04X}", target_addr);
                     
                     should_inc_pc = false;
@@ -245,18 +260,28 @@ impl CPU {
 
                                 // For LDI and LDD (or LD (HL-) and LD (HL+))
                                 if target_param.is_decrement() {
-                                    // debug!("BEFORE HL: 0x{:04X}", self.get_double_register(&"HL".to_string()));
                                     self.set_double_register(
                                         &reg_name,
                                         self.get_double_register(&reg_name) - 1);
-                                    // debug!("AFTER  HL: 0x{:04X}", self.get_double_register(&"HL".to_string()));
                                 } else if target_param.is_increment() {
-                                    if read_param.is_decrement() {
                                     self.set_double_register(
                                         &reg_name,
                                         self.get_double_register(&reg_name) + 1);
-                                    }
                                 }
+
+                                if read_param.is_decrement() {
+                                    self.set_double_register(
+                                        &read_param.get_name(),
+                                        self.get_double_register(&read_param.get_name()) - 1);
+                                } else if read_param.is_increment() {
+                                    self.set_double_register(
+                                        &read_param.get_name(),
+                                        self.get_double_register(&read_param.get_name()) + 1);
+                                }
+
+                                trace!("HL: {:?}", self.get_double_register(&"HL".to_string()));
+                                trace!("LD: From {:?} to {:?}", read_param, target_param);
+
                             },
                             MemValue::Double(addr) => {
                                 match write_value {
