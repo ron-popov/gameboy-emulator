@@ -623,6 +623,36 @@ impl CPU {
                 set_carry_flag = Some(did_underflow);
                 set_half_carry_flag = Some((((self.a_reg & 0xf).wrapping_sub(value & 0xf)) & 0x10) != 0);
             },
+            "OR" => {
+                assert_eq!(params.len(), 1, "OR: Too much params");
+                let param = params.get(0).unwrap();
+
+                let value: u8 = match param.get_value() {
+                    MemValue::Name(reg_name) => {
+                        if param.is_immediate() {
+                            self.get_register(&reg_name)
+                        } else {
+                            let addr = self.get_double_register(&reg_name);
+                            self.get_addr(addr)
+                        }
+                    },
+                    MemValue::Byte(param_value) => {
+                        param_value
+                    },
+                    _ => panic!("SUB: Invalid param type")
+                };
+
+                let a_reg_value: u8 = self.get_register(&"A".to_string());
+                let or_result = value | a_reg_value;
+
+                self.set_register(&"A".to_string(), or_result);
+
+                set_sub_flag = Some(false);
+                set_zero_flag = Some(or_result == 0);
+                set_carry_flag = Some(false);
+                set_half_carry_flag = Some(false);
+
+            }
             _ => {
                 self.dump_memory();
                 unimplemented!("Opcode name ({})", opcode_data["mnemonic"]);
@@ -924,9 +954,9 @@ impl CPU {
     fn verify_flag(&self, doc: &str, value: Option<bool>, name: &str) {
         // trace!("Checking Flag {}, with doc \"{}\" and value \"{:?}\"", name, doc, value);
         if doc == "-" { assert!(value == Option::None, "{} Flag should be empty", name);}
-        if doc != "-" { assert!(value != Option::None, "{} Flag cannot be empty", name); }
         if doc == "1" { assert!(value == Option::Some(true), "{} Flag has to be true", name); }
         if doc == "0" { assert!(value == Option::Some(false), "{} Flag has to be false", name); }
+        if doc != "-" { assert!(value != Option::None, "{} Flag cannot be empty", name); }
     }
 
     fn get_flag(&self, mask: u8) -> bool {
