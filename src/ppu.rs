@@ -219,25 +219,25 @@ impl PPU {
     }
 
     pub fn render(&mut self){
-        if self.is_enabled {
+        if self.is_enabled && !DISABLE_PPU {
             // Render all frames
-            // for sprite_id in 0..=255 {
-            //     // info!("Rendering sprite {}", sprite_id);
-            //     let sprite: Sprite = self.get_sprite_tile(sprite_id);
-            //     let sprite_bitmap: SpriteBitmap = Self::sprite_to_bitmap(sprite);
+            for sprite_id in 0..=255 {
+                // info!("Rendering sprite {}", sprite_id);
+                let sprite: Sprite = self.get_sprite_tile(sprite_id);
+                let sprite_bitmap: SpriteBitmap = Self::sprite_to_bitmap(sprite);
     
-            //     let initial_x = (sprite_id % 8) * 8;
-            //     let initial_y = (sprite_id / 8) * 8;
-            //     for (index, argb) in sprite_bitmap.iter().enumerate() {
-            //         let final_x = initial_x + (index as u8 % 8);
-            //         let final_y = initial_y + (index as u8 / 8);
+                let initial_x = (sprite_id % 8) * 8;
+                let initial_y = (sprite_id / 8) * 8;
+                for (index, argb) in sprite_bitmap.iter().enumerate() {
+                    let final_x = initial_x + (index as u8 % 8);
+                    let final_y = initial_y + (index as u8 / 8);
     
-            //         let pixel_index: usize = final_y as usize * SCREEN_WIDTH + final_x as usize;
+                    let pixel_index: usize = final_y as usize * SCREEN_WIDTH + final_x as usize;
 
-            //         // info!("Pixel index {},{} => {}", final_y, final_x, pixel_index);
-            //         self.buffer[pixel_index] = *argb;
-            //     }
-            // }
+                    // info!("Pixel index {},{} => {}", final_y, final_x, pixel_index);
+                    self.buffer[pixel_index] = *argb;
+                }
+            }
 
             // self.dump_sprites();
 
