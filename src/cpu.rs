@@ -5,6 +5,7 @@ use crate::opcodes::OPCODES_JSON;
 use crate::param::{Param, MemValue};
 
 use serde_json::Value;
+use core::panic;
 use std::rc::Rc;
 use std::cell::RefCell;
 
@@ -31,9 +32,16 @@ pub struct CPU {
 }
 
 impl CPU {
-    pub fn init_with_ram_ppu(ram_memory_ref: Rc<RefCell<RamMemory>>, ppu_ref: Rc<RefCell<PPU>>) -> CPU {
+    pub fn init_with_ram_ppu(ram_memory_ref: Rc<RefCell<RamMemory>>, ppu_ref: Rc<RefCell<PPU>>, boot_rom_enabled: bool) -> CPU {
         let opcodes = get_opcodes();
 
+        let initial_pc: u16;
+        if boot_rom_enabled {
+            initial_pc = 0x0000;
+        } else {
+            initial_pc = 0x0100;
+        }
+        
         CPU {
             ram_memory_ref: ram_memory_ref,
             ppu_ref: ppu_ref,
@@ -46,7 +54,7 @@ impl CPU {
             h_reg: 0,
             l_reg: 0,
             // pc_reg: 0x000C,
-            pc_reg: 0x0100,
+            pc_reg: initial_pc,
             sp_reg: 0xFFFE,
             instruction_counter: 0,
             opcodes: opcodes
@@ -64,6 +72,12 @@ impl CPU {
         let is_opcode_cbprefixed: bool;
 
         self.instruction_counter += 1;
+
+        // Blargg test rom stuff
+        if self.pc_reg == 0xC005 {
+            info!("Entering infinite loop");
+            loop {}
+        }
 
         if opcode == 0xCB {
             is_opcode_cbprefixed = true;
@@ -135,32 +149,30 @@ impl CPU {
 
                 set_sub_flag = Some(true);
 
-                let param = params.get(0).unwrap().get_byte();
-                let (sub_result, did_underflow) = u8::overflowing_sub(self.a_reg, param);
+                
+
+                
+                let param = params.get(0).unwrap();
+                let value = match param.get_value() {
+                    MemValue::Byte(b) => b,
+                    MemValue::Name(reg) => {
+                        if param.is_immediate() {
+                            self.get_register(&reg)
+                        } else {
+                            let addr = self.get_double_register(&reg);
+                            self.get_addr(addr)
+                        }
+                    },
+                    _ => panic!("CP: Invalid source MemValue type")
+                };
+
+                let (sub_result, did_underflow) = u8::overflowing_sub(self.a_reg, value);
                 set_carry_flag = Some(did_underflow);
                 set_zero_flag = Some(sub_result == 0);
 
                 self.a_reg = sub_result;
 
-                // match did_underflow {
-                //     false => {
-                //         // Valid sub result
-                //         set_carry_flag = Some(false);
-                        
-                //         if sub_result == 0 {
-                //             set_zero_flag = Some(true);
-                //         } else {
-                //             set_zero_flag = Some(false);
-                //         }
-                //     }, 
-                //     true => {
-                //         //Underflow happened
-                //         trace!("CP: Underflow happaned");
-                //         set_carry_flag = Some(true);
-                //     }
-                // }
-
-                set_half_carry_flag = Some((((self.a_reg & 0xf).wrapping_sub(param & 0xf)) & 0x10) != 0);
+                set_half_carry_flag = Some((((self.a_reg & 0xf).wrapping_sub(value & 0xf)) & 0x10) != 0);
             },
             "JR" => { // RELATIVE JUMP, SOMETIMES CONDITIONAL
                 // match params.len() {
@@ -360,7 +372,13 @@ impl CPU {
                         xor_value = value;
                     },
                     MemValue::Name(name) => {
-                        xor_value = self.get_register(&name);
+                        let reg_name = from_param.get_name();
+                        trace!("XOR: From reg \"{}\"", reg_name);
+                        if from_param.is_immediate() {
+                            xor_value = self.get_register(&name);
+                        } else {
+                            xor_value = self.get_addr(self.get_double_register(&reg_name));
+                        }
                     },
                     MemValue::Double(addr) => {
                         assert_eq!(from_param.is_immediate(), true, "Tried running XOR with Double immediate value???");
@@ -587,7 +605,6 @@ impl CPU {
                     set_zero_flag = Some(new_value == 0);
                     self.set_addr(addr, new_value);
                 }
-
             },
             "RLA" => { // Rotate left A register through the carry flag
                 assert_eq!(params.len(), 0);
@@ -703,6 +720,138 @@ impl CPU {
                 set_zero_flag = Some(and_result == 0);
                 set_carry_flag = Some(false);
                 set_half_carry_flag = Some(true);
+            },
+            "ADD" => {
+                assert_eq!(params.len(), 2, "ADD: Invalid amount of params");
+
+                // Parse source value
+                let from_param = params.get(1).unwrap();
+                let from_value: u8 = match from_param.get_value() {
+                    MemValue::Name(reg_name) => {
+                        if from_param.is_immediate() {
+                            self.get_register(&reg_name)
+                        } else {
+                            let addr = self.get_double_register(&reg_name);
+                            self.get_addr(addr)
+                        }
+                    },
+                    MemValue::Byte(param_value) => {
+                        param_value
+                    },
+                    _ => panic!("ADD: Invalid param type")
+                };
+
+                // Parse destination value
+                let dest_reg = params.get(0).unwrap().get_name();
+                match dest_reg.len() {
+                    1 => { // A register
+                        assert_eq!(dest_reg, "A", "ADD: Attemp to add to a register of length 1 which isn't A!");
+
+                        // trace!("ADD: Before {}", self.a_reg);
+                        let (add_result, did_overflow) = u8::overflowing_add(self.a_reg, from_value);
+                        self.a_reg = add_result;
+                        // trace!("ADD: After {}", self.a_reg);
+                        // trace!("ADD: Should be {}", add_result);
+
+                        set_sub_flag = Some(false);
+                        set_zero_flag = Some(add_result == 0);
+                        set_carry_flag = Some(did_overflow);
+                        set_half_carry_flag = Some((((self.a_reg & 0xf).wrapping_add(from_value & 0xf)) & 0x10) != 0);
+                    },
+                    2 => { // SP or HL
+                        // let (add_result, did_underflow) = u16::overflowing_add(self.get_double_register(&dest_reg), from_value);
+
+                        // set_sub_flag = Some(true);
+                        // set_zero_flag = Some(add_result == 0);
+                        // set_carry_flag = Some(did_underflow);
+                        // set_half_carry_flag = Some((((self.a_reg & 0xf).wrapping_add(from_value & 0xf)) & 0x100) != 0);
+
+                        unimplemented!("ADD: 16-bit arithmetics");
+                    },
+                    _ => panic!("Attemp to add to a register of unrecognized len")
+                }
+            },
+            "SRL" => {
+                assert_eq!(params.len(), 1, "SRL: Invalid amount of params");
+                let param = params.get(0).unwrap();
+
+                let reg_name = param.get_name();
+                trace!("SRL: Opearting on \"{}\"", reg_name);
+
+                match reg_name.len() {
+                    2 => { // (HL)
+                        let addr = self.get_double_register(&reg_name);
+                        let value = self.get_addr(addr);
+
+                        set_carry_flag = Some(Self::lsb(value.into()) == 1);
+                        let new_value = value >> 1;
+                        set_zero_flag = Some(new_value == 0);
+                        self.set_addr(addr, new_value);
+                    },
+                    1 => { // All other registers
+                        let value = self.get_register(&reg_name);
+
+                        set_carry_flag = Some(Self::lsb(value.into()) == 1);
+                        let new_value = value >> 1;
+                        set_zero_flag = Some(new_value == 0);
+                        self.set_register(&reg_name, new_value);
+                    },
+                    _ => panic!("SRL: Invalid register name")
+                }
+
+                set_sub_flag = Some(false);
+                set_half_carry_flag = Some(false);
+            },
+            "RR" => { // Rotate right through the carry flag
+                assert_eq!(params.len(), 1);
+                let param = params.get(0).unwrap();
+                let reg_name = param.get_name();
+
+                set_half_carry_flag = Some(false);
+                set_sub_flag = Some(false);
+
+                if param.is_immediate() { // Register
+                    let old_value = self.get_register(&reg_name);
+                    set_carry_flag = Some(Self::lsb(old_value.into()) == 1);
+
+                    let mut new_value = old_value >> 1;
+                    if self.get_carry_flag() {
+                        new_value += 0b1000000;
+                    }
+
+                    set_zero_flag = Some(new_value == 0);
+                    self.set_register(&reg_name, new_value);
+                } else { // (HL)
+                    let addr = self.get_double_register(&reg_name);
+                    let old_value = self.get_addr(addr);
+                    set_carry_flag = Some(Self::lsb(old_value.into()) == 1);
+
+                    let mut new_value = old_value >> 1;
+                    if self.get_carry_flag() {
+                        new_value += 0b1000000;
+                    }
+
+                    set_zero_flag = Some(new_value == 0);
+                    self.set_addr(addr, new_value);
+                }
+            },
+            "RRA" => {
+                assert_eq!(params.len(), 0);
+                let reg_name = &"A".to_string();
+
+                set_half_carry_flag = Some(false);
+                set_sub_flag = Some(false);
+
+                let old_value = self.get_register(&reg_name);
+                set_carry_flag = Some(Self::lsb(old_value.into()) == 1);
+
+                let mut new_value = old_value >> 1;
+                if self.get_carry_flag() {
+                    new_value += 0b1000000;
+                }
+
+                set_zero_flag = Some(new_value == 0);
+                self.set_register(&reg_name, new_value);
             },
             _ => {
                 self.dump_memory();
@@ -879,7 +1028,8 @@ impl CPU {
         } 
         else if addr >= RAM_EMPTY_RANGE_START && addr < RAM_INTERNAL_RANGE_START
         { // 0xFF4C -> 0xFF80
-            panic!("Requested addr at a memory addr that should not be used (0x{:04X})", addr);
+            warn!("Requested addr at a memory addr that should not be used (0x{:04X})", addr);
+            return self.ram_memory_ref.borrow_mut().get_addr(addr);
         } 
         else if addr >= RAM_INTERNAL_RANGE_START
         { // 0xFF80 -> END
@@ -898,6 +1048,7 @@ impl CPU {
         } 
         else if addr >= CARTRIDGE_ROM_SIZE_DEFAULT as u16 && addr < RAM_ECHO_RANGE_START 
         { // 0x8000 -> 0xE000
+            debug!("VRAM: Write {} to addr 0x{:04X}", value, addr);
             self.ram_memory_ref.borrow_mut().set_addr(addr, value);
         }
         else if addr >= RAM_ECHO_RANGE_START && addr < RAM_SPRITE_ATTRIBUTE_TABLE_RANGE_START
@@ -914,7 +1065,8 @@ impl CPU {
         } 
         else if addr >= RAM_EMPTY_RANGE_START && addr < RAM_INTERNAL_RANGE_START
         { // 0xFF4C -> 0xFF80
-            panic!("Requested write to addr at a memory addr that should not be used (0x{:04X})", addr);
+            warn!("Requested write to addr at a memory addr that should not be used (0x{:04X})", addr);
+            self.ram_memory_ref.borrow_mut().set_addr(addr, value);
         } 
         else if addr >= RAM_INTERNAL_RANGE_START
         { // 0xFF80 -> END

@@ -4,7 +4,10 @@
 pub const SCREEN_WIDTH: usize = 256;
 pub const SCREEN_HEIGHT: usize = 256;
 pub const GBEMULATOR_ASCII_ART: &str = "\n   _____ ____                       _       _             \n  / ____|  _ \\                     | |     | |            \n | |  __| |_) | ___ _ __ ___  _   _| | __ _| |_ ___  _ __ \n | | |_ |  _ < / _ \\ \'_ ` _ \\| | | | |/ _` | __/ _ \\| \'__|\n | |__| | |_) |  __/ | | | | | |_| | | (_| | || (_) | |   \n  \\_____|____/ \\___|_| |_| |_|\\__,_|_|\\__,_|\\__\\___/|_|   \n                                                          \n                                                          \n";
-pub const DISABLE_PPU: bool = true;
+
+// PPU Debug flags
+pub const PPU_DISABLE: bool = false;
+pub const PPU_DUMP_SPRITES: bool = false;
 
 // RAM STUFF
 pub const RAM_ECHO_RANGE_START: u16 = 0xE000;
@@ -92,15 +95,17 @@ pub const PPU_LCD_ADDR:           [u16; 0x0C] =
 // TODO: .......
 
 // --- PPU ADDR and each bit meaning ---
-pub const PPU_LCD_CONTROL_ADDR: u16                                 = 0xFF40;
+pub const PPU_ADDR_LCD_CONTROL: u16                                 = 0xFF40;
 pub const PPU_LCD_CONTROL_BIT_ENABLE: u8                            = 7;
 pub const PPU_LCD_CONTROL_BIT_WINDOW_TILE_MAP_AREA: u8              = 6;
 pub const PPU_LCD_CONTROL_BIT_WINDOW_ENABLE: u8                     = 5;
-pub const PPU_LCD_CONTROL_BIT_BG_AND_WINDOW_TILE_MAP_AREA: u8       = 4;
+pub const PPU_LCD_CONTROL_BIT_BG_AND_WINDOW_TILE_DATA_AREA: u8       = 4;
 pub const PPU_LCD_CONTROL_BIT_BG_TILE_MAP_AREA: u8                  = 3;
 pub const PPU_LCD_CONTROL_BIT_OBJ_SIZE: u8                          = 2;
 pub const PPU_LCD_CONTROL_BIT_OBJ_ENABLE: u8                        = 1;
 pub const PPU_LCD_CONTROL_BIT_BG_AND_WINDOW_PRIORITY: u8            = 0;
+
+pub const PPU_OAM_ADDR: u16                                         = 0xFE00;
 
 // Colors
 pub const COLOR_WHITE: u32 = 0x00ffffff;

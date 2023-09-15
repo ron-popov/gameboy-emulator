@@ -74,7 +74,7 @@ fn main() {
     let orig_ppu: PPU = PPU::init(ram_memory_ref.clone());
     let ppu_ref: Rc<RefCell<PPU>> = Rc::new(RefCell::new(orig_ppu));
     
-    let mut cpu: CPU = CPU::init_with_ram_ppu(ram_memory_ref.clone(), ppu_ref.clone());
+    let mut cpu: CPU = CPU::init_with_ram_ppu(ram_memory_ref.clone(), ppu_ref.clone(), args.get_flag("boot_rom"));
     
     // Init boot rom
     if args.get_flag("boot_rom") {
@@ -85,11 +85,13 @@ fn main() {
 
     loop {
         // Only run boot rom for now
-        // if cpu.get_program_counter() == 0x0100 {
-        //     panic!("No more boot rom");
-        // }
+        if cpu.get_program_counter() == 0x0100 {
+            panic!("No more boot rom");
+        }
 
         // Execute a single cpu instruction
+        cpu.execute_instruction();
+        cpu.execute_instruction();
         cpu.execute_instruction();
 
         // Render screen (if needed)
