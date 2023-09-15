@@ -225,7 +225,13 @@ impl CPU {
                                 }
                             },
                             MemValue::Byte(_) => write_value = read_param.get_value(),
-                            MemValue::Double(_) => write_value = read_param.get_value(),
+                            MemValue::Double(double_value) => {
+                                if read_param.is_immediate() {
+                                    write_value = read_param.get_value();
+                                } else {
+                                    write_value = MemValue::Byte(self.get_addr(double_value));
+                                }
+                            }
                             _ => panic!("Tried running LD from unknown param type ({:?})", read_param)
                         }
 
