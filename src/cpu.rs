@@ -507,11 +507,10 @@ impl CPU {
                 }
             },
             "CALL" => { // JUMP to addr and push current pc to stack
-                let param = params.get(0).unwrap();
-
+                
                 match params.len() {
                     1 => {
-                        let target_addr = param.get_double();
+                        let target_addr = params.get(0).unwrap().get_double();
                         self.stack_push_double(
                             self.pc_reg + opcode_data["bytes"].as_u64().unwrap() as u16);
 
@@ -519,7 +518,24 @@ impl CPU {
                         should_inc_pc = false;
                     },
                     2 => {
-                        unimplemented!("CALL: Conditional")
+                        let condition = params.get(0).unwrap().get_name();
+                        let target_addr = params.get(1).unwrap().get_double();
+
+                        let should_jump: bool = match condition.as_str() {
+                            "NZ"    => !self.get_zero_flag(),
+                            "Z"     => self.get_zero_flag(),
+                            "NC"    => !self.get_carry_flag(),
+                            "C"     => self.get_carry_flag(),
+                            _ => panic!("Jump: Unknown condition : {}", condition)
+                        };
+
+                        if should_jump {
+                            self.stack_push_double(
+                                self.pc_reg + opcode_data["bytes"].as_u64().unwrap() as u16);
+    
+                            self.pc_reg = target_addr;
+                            should_inc_pc = false;
+                        }
                     },
                     _ => panic!("CALL: Invalid param count")
                 }
@@ -658,7 +674,36 @@ impl CPU {
                 set_carry_flag = Some(false);
                 set_half_carry_flag = Some(false);
 
-            }
+            },
+            "AND" => {
+                assert_eq!(params.len(), 1, "AND: Too much params");
+                let param = params.get(0).unwrap();
+
+                let value: u8 = match param.get_value() {
+                    MemValue::Name(reg_name) => {
+                        if param.is_immediate() {
+                            self.get_register(&reg_name)
+                        } else {
+                            let addr = self.get_double_register(&reg_name);
+                            self.get_addr(addr)
+                        }
+                    },
+                    MemValue::Byte(param_value) => {
+                        param_value
+                    },
+                    _ => panic!("SUB: Invalid param type")
+                };
+
+                let a_reg_value: u8 = self.get_register(&"A".to_string());
+                let and_result = value & a_reg_value;
+
+                self.set_register(&"A".to_string(), and_result);
+
+                set_sub_flag = Some(false);
+                set_zero_flag = Some(and_result == 0);
+                set_carry_flag = Some(false);
+                set_half_carry_flag = Some(true);
+            },
             _ => {
                 self.dump_memory();
                 unimplemented!("Opcode name ({})", opcode_data["mnemonic"]);
