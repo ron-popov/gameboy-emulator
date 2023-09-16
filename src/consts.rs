@@ -7,7 +7,7 @@ pub const GBEMULATOR_ASCII_ART: &str = "\n   _____ ____                       _ 
 
 // PPU Debug flags
 pub const PPU_DISABLE: bool = false;
-pub const PPU_DUMP_SPRITES: bool = false;
+pub const PPU_DUMP_SPRITES: bool = true;
 
 // RAM STUFF
 pub const RAM_ECHO_RANGE_START: u16 = 0xE000;

@@ -38,6 +38,12 @@ fn main() {
         .short('b')
         .long("boot-rom")
         .action(ArgAction::SetTrue))
+    // .arg(Arg::new("ppu_logs_only")
+    //     .long("ppu-logs-only")
+    //     .action(ArgAction::SetTrue))
+    // .arg(Arg::new("cpu_logs_only")
+    //     .long("cpu-logs-only")
+    //     .action(ArgAction::SetTrue))
     .get_matches();
 
     let log_level: LevelFilter = match args.get_count("verbose") {
@@ -46,9 +52,24 @@ fn main() {
         _ => LevelFilter::Info
     };
 
+    let mut logger_config = ConfigBuilder::new();
+    logger_config.set_time_level(LevelFilter::Off);
+    logger_config.set_target_level(LevelFilter::Off);
+    logger_config.set_level_color(Level::Error, None);
+    logger_config.set_level_color(Level::Warn, None);
+    logger_config.set_level_color(Level::Info, None);
+    logger_config.set_level_color(Level::Debug, None);
+    logger_config.set_level_color(Level::Trace, None);
+
+    // if args.get_flag("ppu_logs_only") {
+    //     logger_config.add_filter_allow("ppu".to_string());
+    // } else if args.get_flag("cpu_logs_only") {
+    //     logger_config.add_filter_allow("cpu".to_string());
+    // }
+
     CombinedLogger::init(
         vec![
-            TermLogger::new(log_level, Config::default(), TerminalMode::Mixed, ColorChoice::Auto)
+            TermLogger::new(log_level, logger_config.build(), TerminalMode::Mixed, ColorChoice::Auto)
         ]
     ).unwrap();
 
@@ -85,11 +106,14 @@ fn main() {
 
     loop {
         // Only run boot rom for now
-        if cpu.get_program_counter() == 0x0100 {
-            panic!("No more boot rom");
+        if args.get_flag("boot_rom") {
+            if cpu.get_program_counter() == 0x0100 {
+                panic!("No more boot rom");
+            }
         }
 
         // Execute a single cpu instruction
+        cpu.execute_instruction();
         cpu.execute_instruction();
         cpu.execute_instruction();
         cpu.execute_instruction();

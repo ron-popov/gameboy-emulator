@@ -185,23 +185,82 @@ impl PPU {
                 // 7 -> Control enable bit
                 if bit_check(value, PPU_LCD_CONTROL_BIT_ENABLE) {
                     if !self.get_ppu_config("is_enabled") {
-                        trace!("PPU: Enabling lcd display");
-                        self.set_ppu_config("is_enabled", true);
+                        trace!("PPU: LCD_CONTROL: Enabling lcd display");
+
+                        // The default handler also writes to memory
+                        // self.set_ppu_config("is_enabled", true);
                     }
                 } else {
                     if self.get_ppu_config("is_enabled") { // Disable only if screen is enabled
-                        trace!("PPU: Disabling lcd display");
+                        trace!("PPU: LCD_CONTROL: Disabling lcd display");
                         self.window.update_with_buffer(
                             &get_empty_screen_buffer(), 
                             SCREEN_WIDTH, SCREEN_HEIGHT).unwrap_or_else(|e| {
-                                panic!("PPU: Failed rendering window due to error ({})", e);
+                                panic!("PPU: LCD_CONTROL: Failed rendering window due to error ({})", e);
                         });
     
-                        self.set_ppu_config("is_enabled", false);
+                        // The default handler also writes to memory
+                        // self.set_ppu_config("is_enabled", false);
                     }
                 }
+
+
+
+                // 6 - Window tile map area
+                if bit_check(value, PPU_LCD_CONTROL_BIT_WINDOW_TILE_MAP_AREA) {
+                    trace!("PPU: LCD_CONTROL: Window tile map area is 0x9C00-0x9FFF")
+                } else {
+                    trace!("PPU: LCD_CONTROL: Window tile map area is 0x9800-0x9BFF")
+                }
+
+                // 5 - Window enabled
+                if bit_check(value, PPU_LCD_CONTROL_BIT_WINDOW_ENABLE) {
+                    trace!("PPU: LCD_CONTROL: Window enabled")
+                } else {
+                    trace!("PPU: LCD_CONTROL: Window disabled")
+                }
+
+
+                // 4 - BG And Window tile data area
+                if bit_check(value, PPU_LCD_CONTROL_BIT_BG_AND_WINDOW_TILE_DATA_AREA) {
+                    trace!("PPU: LCD_CONTROL: BG And Window tile data area is 0x8000-0x8FFF")
+                } else {
+                    trace!("PPU: LCD_CONTROL: BG And Window tile data area is 0x8800-0x97FF")
+                }
+
+
+                // 3 - BG Tile map area
+                if bit_check(value, PPU_LCD_CONTROL_BIT_BG_TILE_MAP_AREA) {
+                    trace!("PPU: LCD_CONTROL: BG Tile map area is 0x9C00-0x9FFF")
+                } else {
+                    trace!("PPU: LCD_CONTROL: BG Tile map area is 0x9800-0x9BFF")
+                }
+
+
+                // 2 - Object size
+                if bit_check(value, PPU_LCD_CONTROL_BIT_OBJ_SIZE) {
+                    trace!("PPU: LCD_CONTROL: Object size is 8x16")
+                } else {
+                    trace!("PPU: LCD_CONTROL: Object size is 8x8")
+                }
+
+
+                // 1 - Object enabled
+                if bit_check(value, PPU_LCD_CONTROL_BIT_OBJ_ENABLE) {
+                    trace!("PPU: LCD_CONTROL: Objects are enabled")
+                } else {
+                    trace!("PPU: LCD_CONTROL: Objects are disabled")
+                }
+
+
+                // 0 - BG And Window priority
+                if bit_check(value, PPU_LCD_CONTROL_BIT_BG_AND_WINDOW_PRIORITY) {
+                    trace!("PPU: LCD_CONTROL: BG And Window priotity ON")
+                } else {
+                    trace!("PPU: LCD_CONTROL: BG And Window priotity OFF")
+                }
             },
-            _ => warn!("PPU: lcd_control_set_handler was called with an invalid memory addr (0x{:04X})", addr)
+            _ => warn!("PPU: lcd_control_set_handler was called with an unknown memory addr (0x{:04X})", addr)
         }
     }
 
@@ -262,13 +321,14 @@ impl PPU {
             if PPU_DUMP_SPRITES { // Render all frames
                 trace!("PPU: Dumping sprites to screen");
                 for sprite_id in 0..=0xff {
-                    let sprite: Sprite = self.get_sprite_tile(25);
+                    let sprite: Sprite = self.get_sprite_tile(sprite_id);
+                    // let sprite: Sprite = self.get_sprite_tile(25); // "Copyright" sprite of the nintendo logo in the boot rom
         
-                    // let x_pos = (sprite_id % 32) * 8;
-                    // let y_pos = (sprite_id / 32) * 8;
+                    let x_pos = (sprite_id % 32) * 8;
+                    let y_pos = (sprite_id / 32) * 8;
                     
-                    let x_pos = 80;
-                    let y_pos = 80;
+                    // let x_pos = 80;
+                    // let y_pos = 80;
                     
                     self.draw_sprite_in_buffer(sprite, x_pos, y_pos)
                 }
@@ -293,22 +353,26 @@ impl PPU {
                     let map_entry_index = (bg_addr - bg_addr_init) as u8;
                     let x_pos: u8 = (map_entry_index % 32) * 8;
                     let y_pos: u8 = (map_entry_index / 32) * 8;
-
-                    // let x_pos: u8 = 80;
-                    // let y_pos: u8 = 80;
-                    
                     
                     let tile_index = self.get_addr(bg_addr);
+
+                    // Ignore tile index 0 - For some reason only 1 in 4 renders actually renders the real tile
+                    // The rest render tile 0 - For example
+                    //        [src/ppu.rs:310] Drawing sprite id 25 in (128, 0)
+                    //        [src/ppu.rs:310] Drawing sprite id 0 in (128, 0)
+                    //        [src/ppu.rs:310] Drawing sprite id 0 in (128, 0)
+                    //        [src/ppu.rs:310] Drawing sprite id 0 in (128, 0)
+
+
                     if tile_index == 0 {
                         bg_addr += 1;
                         continue;
                     }
+                    
                     let sprite = self.get_sprite_tile(tile_index);
-                    // let sprite = self.get_sprite_tile(25);
                     self.draw_sprite_in_buffer(sprite, x_pos, y_pos);
                     
                     trace!("Drawing sprite id {} in ({}, {})", tile_index, x_pos, y_pos);
-                    trace!("Sprite content : {:?}", sprite);
 
                     bg_addr += 1;
                 }
@@ -317,13 +381,6 @@ impl PPU {
                 // TODO : Display window
 
                 // Print buffer vector
-                trace!("PPU: Buffer vector");
-                for counter in 0..self.buffer.len() {
-                    if self.buffer[counter] != 16777215 {
-                        trace!("Pixel #{} is value {}", counter, self.buffer[counter]);
-                    }
-                }
-
                 trace!("PPU: Rendering frame");
                 self.window.update_with_buffer(&self.buffer, SCREEN_WIDTH, SCREEN_HEIGHT).unwrap_or_else(|e| {
                     panic!("Failed rendering window due to error ({})", e);
