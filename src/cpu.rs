@@ -109,6 +109,7 @@ impl CPU {
         }
         trace!("");
         trace!("");
+        debug!("CPU State, A:0x{:02X}, B:0x{:02X}, , C:0x{:02X}", self.a_reg, self.b_reg, self.c_reg);
         debug!("0x{:04X} -> {} {}", self.pc_reg, opcode_name, param_data);
         trace!("Instruction #{}", self.instruction_counter);
 
@@ -656,6 +657,8 @@ impl CPU {
                 };
 
                 let (sub_result, did_underflow) = u8::overflowing_sub(self.a_reg, value);
+
+                self.a_reg = sub_result;
 
                 set_sub_flag = Some(true);
                 set_zero_flag = Some(sub_result == 0);

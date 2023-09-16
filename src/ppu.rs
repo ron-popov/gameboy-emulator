@@ -54,7 +54,6 @@ impl PPU {
 
 
 
-
     // COLOR & BITMAP STUFF
     fn draw_sprite_in_buffer(&mut self, sprite: Sprite, x:u8, y:u8) {
         let sprite_bitmap: SpriteBitmap = self.sprite_to_bitmap(sprite);
@@ -148,6 +147,9 @@ impl PPU {
 
         return sprite_bitmap;
     }
+
+
+
 
 
 
@@ -279,6 +281,12 @@ impl PPU {
                 
                 self.ram_memory.borrow_mut().set_addr(addr, value);
                 self.update_color_pallete();
+            },
+            PPU_BG_Y_VIEWPORT => { // Y Viewport
+                debug!("A Change to y viewport : {}", value);
+            },
+            PPU_BG_X_VIEWPORT => { // X Viewport
+                debug!("A Change to x viewport : {}", value);
             }
             _ => warn!("PPU: lcd_control_set_handler was called with an unknown memory addr (0x{:04X})", addr)
         }
@@ -368,12 +376,17 @@ impl PPU {
                 }
                 let mut bg_addr: u16 = bg_addr_init;
 
+                // Get background viewport
+                let y_viewport = self.get_addr(PPU_BG_Y_VIEWPORT);
+                let x_viewport = self.get_addr(PPU_BG_X_VIEWPORT);
+
                 // Render sprites
                 while bg_addr < (bg_addr_init + 0x0400) {
                     let map_entry_index = (bg_addr - bg_addr_init) as u8;
-                    let x_pos: u8 = (map_entry_index % 32) * 8;
-                    let y_pos: u8 = (map_entry_index / 32) * 8;
+                    let (x_pos, _) = u8::overflowing_add((map_entry_index % 32) * 8, x_viewport);
+                    let (y_pos, _) = u8::overflowing_add((map_entry_index / 32) * 8, y_viewport);
                     
+                    // Find tile index
                     let tile_index = self.get_addr(bg_addr);
 
                     // Ignore tile index 0 - For some reason only 1 in 4 renders actually renders the real tile

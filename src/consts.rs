@@ -105,6 +105,9 @@ pub const PPU_LCD_CONTROL_BIT_OBJ_SIZE: u8                          = 2;
 pub const PPU_LCD_CONTROL_BIT_OBJ_ENABLE: u8                        = 1;
 pub const PPU_LCD_CONTROL_BIT_BG_AND_WINDOW_PRIORITY: u8            = 0;
 
+pub const PPU_BG_Y_VIEWPORT: u16                                    = 0xFF42;
+pub const PPU_BG_X_VIEWPORT: u16                                    = 0xFF43;
+
 pub const PPU_BG_COLOR_PALLETE: u16                                 = 0xFF47;
 pub const PPU_EXCLUDE_RAM_WRITE: [u16; 1]                           = [PPU_BG_COLOR_PALLETE];
 
