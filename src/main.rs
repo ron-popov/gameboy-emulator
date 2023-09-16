@@ -69,7 +69,8 @@ fn main() {
 
     CombinedLogger::init(
         vec![
-            TermLogger::new(log_level, logger_config.build(), TerminalMode::Mixed, ColorChoice::Auto)
+            TermLogger::new(log_level, logger_config.build(), TerminalMode::Mixed, ColorChoice::Auto),
+            WriteLogger::new(LevelFilter::Trace, logger_config.build(), File::create("/tmp/gb.log").unwrap())
         ]
     ).unwrap();
 

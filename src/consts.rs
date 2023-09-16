@@ -7,7 +7,7 @@ pub const GBEMULATOR_ASCII_ART: &str = "\n   _____ ____                       _ 
 
 // PPU Debug flags
 pub const PPU_DISABLE: bool = false;
-pub const PPU_DUMP_SPRITES: bool = true;
+pub const PPU_DUMP_SPRITES: bool = false;
 
 // RAM STUFF
 pub const RAM_ECHO_RANGE_START: u16 = 0xE000;
@@ -104,6 +104,9 @@ pub const PPU_LCD_CONTROL_BIT_BG_TILE_MAP_AREA: u8                  = 3;
 pub const PPU_LCD_CONTROL_BIT_OBJ_SIZE: u8                          = 2;
 pub const PPU_LCD_CONTROL_BIT_OBJ_ENABLE: u8                        = 1;
 pub const PPU_LCD_CONTROL_BIT_BG_AND_WINDOW_PRIORITY: u8            = 0;
+
+pub const PPU_BG_COLOR_PALLETE: u16                                 = 0xFF47;
+pub const PPU_EXCLUDE_RAM_WRITE: [u16; 1]                           = [PPU_BG_COLOR_PALLETE];
 
 pub const PPU_OAM_ADDR: u16                                         = 0xFE00;
 

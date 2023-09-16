@@ -7,12 +7,13 @@ use minifb::{Window, WindowOptions, Scale};
 use bmp::{Image, Pixel};
 
 type Sprite = [u8; 16]; // Sprite as represented in VRAM
-type SpriteBitmap = [u32; 64]; // Sprite as 64 (8 by 8) pixels
+type SpriteBitmap = [u32; 64]; // Sprite as 64 (8 by 8) pixels - this can be displayed
 
 pub struct PPU {
     buffer: Vec<u32>,
     window: Window,
-    ram_memory: Rc<RefCell<RamMemory>>
+    ram_memory: Rc<RefCell<RamMemory>>,
+    color_pallete: [u32; 4]
 }
 
 impl PPU {
@@ -46,7 +47,8 @@ impl PPU {
         PPU {
             buffer: get_empty_screen_buffer(),
             window: window,
-            ram_memory: ram_memory_ref
+            ram_memory: ram_memory_ref,
+            color_pallete: [0,0,0,0]
         }
     }
 
@@ -55,7 +57,7 @@ impl PPU {
 
     // COLOR & BITMAP STUFF
     fn draw_sprite_in_buffer(&mut self, sprite: Sprite, x:u8, y:u8) {
-        let sprite_bitmap: SpriteBitmap = Self::sprite_to_bitmap(sprite);
+        let sprite_bitmap: SpriteBitmap = self.sprite_to_bitmap(sprite);
         self.draw_sprite_bitmap_in_buffer(sprite_bitmap, x.into(), y.into());
 
     }
@@ -66,31 +68,40 @@ impl PPU {
             for (index, pixel) in row.iter().enumerate() {
                 let pixel_index = new_y * SCREEN_WIDTH + x + index;
                 self.buffer[pixel_index] = *pixel;
-
-                if *pixel != 16777215 {
-                    trace!("Pixel at #{}", pixel_index);
-                }
             }
             new_y += 1;
         }
     }
 
-    fn get_color_by_color_pallete(color_code: u8) -> u32 {
+    fn get_real_color(color_code: u8) -> u32 {
         match color_code {
-            0 => { //WHITE
-                return COLOR_WHITE;
-            },
-            1 => {
-                return COLOR_LIGHT_GREY;
-            },
-            2 => {
-                return COLOR_DARK_GREY;
-            },
-            3 => {
-                return COLOR_BLACK;
-            },
-            _ => panic!("Invalid color code")
+            0 => COLOR_WHITE,
+            1 => COLOR_LIGHT_GREY,
+            2 => COLOR_DARK_GREY,
+            3 => COLOR_BLACK,
+            _ => panic!("Unknown real color requested : {}", color_code)
         }
+    }
+
+    fn update_color_pallete(&mut self) {
+        let bg_color_pallete = self.get_addr(PPU_BG_COLOR_PALLETE);
+
+        // Update index 0
+        let color_0: u8 = (bit_check(bg_color_pallete, 0) as u8) + ((bit_check(bg_color_pallete, 1) as u8) * 2);
+        let color_1: u8 = (bit_check(bg_color_pallete, 2) as u8) + ((bit_check(bg_color_pallete, 3) as u8) * 2);
+        let color_2: u8 = (bit_check(bg_color_pallete, 4) as u8) + ((bit_check(bg_color_pallete, 5) as u8) * 2);
+        let color_3: u8 = (bit_check(bg_color_pallete, 6) as u8) + ((bit_check(bg_color_pallete, 7) as u8) * 2);
+
+        self.color_pallete = [
+            Self::get_real_color(color_0),
+            Self::get_real_color(color_1),
+            Self::get_real_color(color_2),
+            Self::get_real_color(color_3)
+        ]
+    }
+
+    fn get_color_by_color_pallete(&self, color_code: u8) -> u32 {
+        return self.color_pallete[color_code as usize];
     }
 
     fn get_sprite_tile(&self, tile_id: u8) -> Sprite {
@@ -104,7 +115,6 @@ impl PPU {
         }
 
         tile_addr += 16 * tile_id as u16;
-        trace!("PPU: Tile addr for #{} is 0x{:04X}", tile_id, tile_addr);
 
         let mut sprite: Sprite = [0 as u8; 16];
         for x in 0..16 {
@@ -114,7 +124,7 @@ impl PPU {
         return sprite;
     }
 
-    fn sprite_to_bitmap(sprite: Sprite) -> SpriteBitmap {
+    fn sprite_to_bitmap(&self, sprite: Sprite) -> SpriteBitmap {
         let mut sprite_bitmap: SpriteBitmap = [0x00ffffff; 64];
         let mut counter: usize = 0;
         for pair in sprite.chunks(2) {
@@ -130,7 +140,7 @@ impl PPU {
                     _ => panic!("PPU: Invalid types in sprite_to_bitmap")
                 };
 
-                sprite_bitmap[counter] = Self::get_color_by_color_pallete(color_code);
+                sprite_bitmap[counter] = self.get_color_by_color_pallete(color_code);
 
                 counter += 1;
             }
@@ -144,8 +154,12 @@ impl PPU {
 
     // MEMORY STUFF
     pub fn set_addr(&mut self, addr: u16, value: u8) {
-        info!("PPU: Write to ppu addr 0x{:04X} -> 0x{:02X}", addr ,value);
-        let should_write_to_ram_memory: bool = true;
+        debug!("PPU: Write to ppu addr 0x{:04X} -> 0x{:02X}", addr ,value);
+        let mut should_write_to_ram_memory: bool = true;
+
+        if PPU_EXCLUDE_RAM_WRITE.contains(&addr) {
+            should_write_to_ram_memory = false;
+        }
 
         if PPU_JOYPAD_INPUT_ADDR.contains(&addr) {
             trace!("PPU: 0x{:04X} is joypad input addr", addr);
@@ -260,6 +274,12 @@ impl PPU {
                     trace!("PPU: LCD_CONTROL: BG And Window priotity OFF")
                 }
             },
+            PPU_BG_COLOR_PALLETE => { //Updating bg color pallete
+                debug!("Updating bg color pallete");
+                
+                self.ram_memory.borrow_mut().set_addr(addr, value);
+                self.update_color_pallete();
+            }
             _ => warn!("PPU: lcd_control_set_handler was called with an unknown memory addr (0x{:04X})", addr)
         }
     }
@@ -319,7 +339,7 @@ impl PPU {
     pub fn render(&mut self){
         if self.get_ppu_config("is_enabled") && !PPU_DISABLE {
             if PPU_DUMP_SPRITES { // Render all frames
-                trace!("PPU: Dumping sprites to screen");
+                debug!("PPU: Dumping sprites to screen");
                 for sprite_id in 0..=0xff {
                     let sprite: Sprite = self.get_sprite_tile(sprite_id);
                     // let sprite: Sprite = self.get_sprite_tile(25); // "Copyright" sprite of the nintendo logo in the boot rom
@@ -333,7 +353,7 @@ impl PPU {
                     self.draw_sprite_in_buffer(sprite, x_pos, y_pos)
                 }
     
-                trace!("PPU: Rendering frame");
+                debug!("PPU: Rendering frame");
                 self.window.update_with_buffer(&self.buffer, SCREEN_WIDTH, SCREEN_HEIGHT).unwrap_or_else(|e| {
                     panic!("Failed rendering window due to error ({})", e);
                 });
@@ -368,7 +388,7 @@ impl PPU {
                         bg_addr += 1;
                         continue;
                     }
-                    
+
                     let sprite = self.get_sprite_tile(tile_index);
                     self.draw_sprite_in_buffer(sprite, x_pos, y_pos);
                     
@@ -381,7 +401,7 @@ impl PPU {
                 // TODO : Display window
 
                 // Print buffer vector
-                trace!("PPU: Rendering frame");
+                debug!("PPU: Rendering frame");
                 self.window.update_with_buffer(&self.buffer, SCREEN_WIDTH, SCREEN_HEIGHT).unwrap_or_else(|e| {
                     panic!("Failed rendering window due to error ({})", e);
                 });
